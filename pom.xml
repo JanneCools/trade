@@ -12,6 +12,6 @@
     <modules>
         <module>core</module>
         <module>sigma</module>
-<!--        <module>chronos</module>-->
+        <module>chronos</module>
     </modules>
 </project>
