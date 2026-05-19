@@ -13,5 +13,6 @@
         <module>core</module>
         <module>sigma</module>
         <module>chronos</module>
+        <module>experiments</module>
     </modules>
 </project>
