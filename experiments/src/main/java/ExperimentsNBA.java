@@ -25,11 +25,12 @@ import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
-public class ExperimentsNBA extends Experiments<Integer> {
+public class  ExperimentsNBA extends Experiments<Integer> {
 
 
-    public ExperimentsNBA(String path, String datasetFilename, String rulesetFilename, String timeAttribute, String partitionAttribute) {
-        super(path, datasetFilename, rulesetFilename, timeAttribute, partitionAttribute);
+    public ExperimentsNBA(String path, String datasetFilename, String rulesetFilename,
+                          String timeAttribute, String partitionAttribute, boolean earlyStop) {
+        super(path, datasetFilename, rulesetFilename, timeAttribute, partitionAttribute, earlyStop);
     }
 
     public ExperimentsNBA(ExperimentsNBA other) {
@@ -190,6 +191,7 @@ public class ExperimentsNBA extends Experiments<Integer> {
 
         boolean baseline = true;
         int numAnchors = 1;
+        boolean earlyStop = true;
 
         System.out.println("Running ExperimentsNBA with " + (baseline ? "baseline" : "customized") + " cost model and " + numAnchors + " anchors.");
 
@@ -201,7 +203,7 @@ public class ExperimentsNBA extends Experiments<Integer> {
         double executionTimePreprocessing = 0.0;
         Validator<Integer> validator = new Validator<>(path + "/error_locations.txt");
         for (int i = 0; i < amount; i++) {
-            ExperimentsNBA rd = new ExperimentsNBA(path, datasetFilename, rulesetFilename, timeAttribute, partitionAttribute);
+            ExperimentsNBA rd = new ExperimentsNBA(path, datasetFilename, rulesetFilename, timeAttribute, partitionAttribute, earlyStop);
 
             rd.readDatasetFromPath(";");
             rd.readRulesFromPath();
@@ -241,11 +243,11 @@ public class ExperimentsNBA extends Experiments<Integer> {
 //        String rulesetFilename = "rules.rbx";
 //        String timeAttribute = "line_nr";
 //        String partitionAttribute = "player";
-//
-//        ExperimentsNBA rd = new ExperimentsNBA(path, datasetFilename, rulesetFilename, timeAttribute, partitionAttribute);
-//
+//        boolean earlyStop = true;
 //        boolean baseline = true;
 //        int numAnchors = 1;
+//
+//        ExperimentsNBA rd = new ExperimentsNBA(path, datasetFilename, rulesetFilename, timeAttribute, partitionAttribute, earlyStop);
 //
 //        System.out.println("Running ExperimentsNBA with " + (baseline ? "baseline" : "customized") + " cost model and " + numAnchors + " anchors.");
 //

@@ -24,8 +24,9 @@ import java.util.function.BinaryOperator;
 
 public class ExperimentsGait extends Experiments<LocalDate> {
 
-    public ExperimentsGait(String path, String datasetFilename, String rulesetFilename, String timeAttribute, String partitionAttribute) {
-        super(path, datasetFilename, rulesetFilename, timeAttribute, partitionAttribute);
+    public ExperimentsGait(String path, String datasetFilename, String rulesetFilename,
+                           String timeAttribute, String partitionAttribute, boolean earlyStop) {
+        super(path, datasetFilename, rulesetFilename, timeAttribute, partitionAttribute, earlyStop);
     }
 
     public ExperimentsGait(ExperimentsGait other) {
@@ -210,6 +211,7 @@ public class ExperimentsGait extends Experiments<LocalDate> {
 
         boolean baseline = true;
         int numAnchors = 1;
+        boolean earlyStop = true;
 
         System.out.println("Running ExperimentsGait with " + (baseline ? "baseline" : "customized") + " cost model and " + numAnchors + " anchors.");
 
@@ -222,7 +224,7 @@ public class ExperimentsGait extends Experiments<LocalDate> {
         Validator<LocalDate> validator = new Validator<>(path + "/error_locations.txt");
         for (int i = 0; i < amount; i++) {
             System.out.println("Run " + i);
-            ExperimentsGait rd = new ExperimentsGait(path, datasetFilename, rulesetFilename, timeAttribute, partitionAttribute);
+            ExperimentsGait rd = new ExperimentsGait(path, datasetFilename, rulesetFilename, timeAttribute, partitionAttribute, earlyStop);
 
             rd.readDatasetFromPath(";");
             rd.readRulesFromPath();
@@ -262,11 +264,11 @@ public class ExperimentsGait extends Experiments<LocalDate> {
 //        String rulesetFilename = "rules.rbx";
 //        String timeAttribute = "datum";
 //        String partitionAttribute = "patient_upn";
-//
-//        ExperimentsGait rd = new ExperimentsGait(path, datasetFilename, rulesetFilename, timeAttribute, partitionAttribute);
-//
+//        boolean earlyStop = true;
 //        boolean baseline = true;
 //        int numAnchors = 1;
+//
+//        ExperimentsGait rd = new ExperimentsGait(path, datasetFilename, rulesetFilename, timeAttribute, partitionAttribute, earlyStop);
 //
 //        System.out.println("Running ExperimentsGait with " + (baseline ? "baseline" : "customized") + " cost model and " + numAnchors + " anchors.");
 //

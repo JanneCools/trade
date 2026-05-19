@@ -41,6 +41,7 @@ import java.util.stream.Collectors;
 
 public abstract class Experiments<I extends Comparable<? super I>> {
     // metadata
+    private final boolean earlyStop;
     private final String datasetPath;
     private final String rulesetPath;
     final String timeAttribute;
@@ -65,7 +66,9 @@ public abstract class Experiments<I extends Comparable<? super I>> {
 
 
     public Experiments(
-            String path, String datasetFilename, String rulesetFilename, String timeAttribute, String partitionAttribute) {
+            String path, String datasetFilename, String rulesetFilename,
+            String timeAttribute, String partitionAttribute, boolean earlyStop) {
+        this.earlyStop = earlyStop;
         this.datasetPath = path + "/" + datasetFilename;
         this.rulesetPath = path + "/" + rulesetFilename;
         this.timeAttribute = timeAttribute;
@@ -75,6 +78,7 @@ public abstract class Experiments<I extends Comparable<? super I>> {
     }
 
     public Experiments(Experiments<I> other) {
+        this.earlyStop = other.earlyStop;
         this.datasetPath = other.datasetPath;
         this.rulesetPath = other.rulesetPath;
         this.timeAttribute = other.timeAttribute;
@@ -184,7 +188,8 @@ public abstract class Experiments<I extends Comparable<? super I>> {
                 ruleset,
                 costModel,
                 nullBehavior,
-                new CPFRandomRepairSelection()
+                new CPFRandomRepairSelection(),
+                earlyStop
         );
     }
 
@@ -198,7 +203,8 @@ public abstract class Experiments<I extends Comparable<? super I>> {
                 ruleset,
                 costModel,
                 nullBehavior,
-                new CPFRandomRepairSelection()
+                new CPFRandomRepairSelection(),
+                earlyStop
         );
     }
 

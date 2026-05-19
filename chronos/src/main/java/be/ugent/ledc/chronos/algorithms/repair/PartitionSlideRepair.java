@@ -44,7 +44,7 @@ public class PartitionSlideRepair<I extends Comparable<? super I>> {
         this.repairs = new HashMap<>(repairEngine.repairs);
     }
 
-    public PartitionSlideRepair(SigmaRuleset ruleset, ConstantCostModel costModel, NullBehavior nullBehavior, CPFRepairSelection repairSelection) throws RepairException {
+    public PartitionSlideRepair(SigmaRuleset ruleset, ConstantCostModel costModel, NullBehavior nullBehavior, CPFRepairSelection repairSelection, boolean earlyStop) throws RepairException {
         // create partitions based on the ruleset
         List<SigmaRuleset> sigmaPartitions = SigmaRulesetOperations.partition(ruleset).stream().toList();
 
@@ -59,11 +59,11 @@ public class PartitionSlideRepair<I extends Comparable<? super I>> {
                 cpfs = mergeCPFSets(cpfs, SigmaRulesetInverter.invert(iterator.next()));
             }
             repairs.put(partition.getMergedRuleset().getContractors().keySet(),
-                    new SlideRepair<>(cpfs, partition.getMergedRuleset(), costModel, nullBehavior, repairSelection));
+                    new SlideRepair<>(cpfs, partition.getMergedRuleset(), costModel, nullBehavior, repairSelection, earlyStop));
         }
     }
 
-    public PartitionSlideRepair(SigmaRuleset ruleset, NonConstantCostModel costModel, NullBehavior nullBehavior, CPFRepairSelection repairSelection) throws RepairException {
+    public PartitionSlideRepair(SigmaRuleset ruleset, NonConstantCostModel costModel, NullBehavior nullBehavior, CPFRepairSelection repairSelection, boolean earlyStop) throws RepairException {
         // create partitions based on the ruleset
         List<SigmaRuleset> sigmaPartitions = SigmaRulesetOperations.partition(ruleset).stream().toList();
 
@@ -78,7 +78,7 @@ public class PartitionSlideRepair<I extends Comparable<? super I>> {
                 cpfs = mergeCPFSets(cpfs, SigmaRulesetInverter.invert(iterator.next()));
             }
             repairs.put(partition.getMergedRuleset().getContractors().keySet(),
-                    new SlideRepair<>(cpfs, partition.getMergedRuleset(), costModel, nullBehavior, repairSelection));
+                    new SlideRepair<>(cpfs, partition.getMergedRuleset(), costModel, nullBehavior, repairSelection, earlyStop));
         }
     }
 

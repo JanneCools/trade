@@ -25,8 +25,9 @@ import java.util.function.BinaryOperator;
 public class ExperimentsSettlement extends Experiments<LocalDateTime> {
 
     public ExperimentsSettlement(
-            String path, String queryFilename, String rulesetFilename, String timeAttribute, String partitionAttribute) {
-        super(path, queryFilename, rulesetFilename, timeAttribute, partitionAttribute);
+            String path, String queryFilename, String rulesetFilename,
+            String timeAttribute, String partitionAttribute, boolean earlyStop) {
+        super(path, queryFilename, rulesetFilename, timeAttribute, partitionAttribute, earlyStop);
     }
 
     public ExperimentsSettlement(ExperimentsSettlement other) {
@@ -145,6 +146,7 @@ public class ExperimentsSettlement extends Experiments<LocalDateTime> {
 
         boolean baseline = true;
         int numAnchors = 1;
+        boolean earlyStop = true;
 
         System.out.println("Running ExperimentsSettlement with " + (baseline ? "baseline" : "customized") + " cost model and " + numAnchors + " anchors.");
 
@@ -156,7 +158,7 @@ public class ExperimentsSettlement extends Experiments<LocalDateTime> {
         double executionTimePreprocessing = 0.0;
         Validator<LocalDateTime> validator = new Validator<>(path + "/error_locations.txt");
         for (int i = 0; i < amount; i++) {
-            ExperimentsSettlement rw = new ExperimentsSettlement(path, datasetFilename, rulesetFilename, timeAttribute, partitionAttribute);
+            ExperimentsSettlement rw = new ExperimentsSettlement(path, datasetFilename, rulesetFilename, timeAttribute, partitionAttribute, earlyStop);
 
             rw.readDatasetFromPath(";");
             rw.readRulesFromPath();
@@ -196,11 +198,11 @@ public class ExperimentsSettlement extends Experiments<LocalDateTime> {
 //        String rulesetFilename = "rules.rbx";
 //        String timeAttribute = "value_valid_from";
 //        String partitionAttribute = "page_id";
-//
-//        ExperimentsSettlement rw = new ExperimentsSettlement(path, datasetFilename, rulesetFilename, timeAttribute, partitionAttribute);
-//
+//        boolean earlyStop = true;
 //        boolean baseline = true;
 //        int numAnchors = 1;
+//
+//        ExperimentsSettlement rw = new ExperimentsSettlement(path, datasetFilename, rulesetFilename, timeAttribute, partitionAttribute, earlyStop);
 //
 //        System.out.println("Running ExperimentsSettlement with " + (baseline ? "baseline" : "customized") + " cost model and " + numAnchors + " anchors.");
 //

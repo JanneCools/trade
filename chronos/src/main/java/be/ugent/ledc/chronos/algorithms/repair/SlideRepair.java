@@ -50,6 +50,8 @@ public class SlideRepair<I extends Comparable<? super I>> {
     private static final int FORWARD    = 1;
     private static final int BACKWARD   = -1;
 
+    private final boolean earlyStop;
+
     private final Map<String, SigmaContractor<?>> contractors;
 
     /**
@@ -86,11 +88,17 @@ public class SlideRepair<I extends Comparable<? super I>> {
 
     public SlideRepair(SigmaRuleset sigmaRuleset, ConstantCostModel costModel,
                        NullBehavior nullBehavior, CPFRepairSelection repairSelection) throws RepairException {
-        this(null, sigmaRuleset, costModel, nullBehavior, repairSelection);
+        this(null, sigmaRuleset, costModel, nullBehavior, repairSelection, true);
     }
 
     public SlideRepair(Set<CPF> cpfs, SigmaRuleset sigmaRuleset, ConstantCostModel costModel,
                        NullBehavior nullBehavior, CPFRepairSelection repairSelection) throws RepairException {
+        this(cpfs, sigmaRuleset, costModel, nullBehavior, repairSelection, true);
+    }
+
+    public SlideRepair(Set<CPF> cpfs, SigmaRuleset sigmaRuleset, ConstantCostModel costModel,
+                       NullBehavior nullBehavior, CPFRepairSelection repairSelection, boolean earlyStop) throws RepairException {
+        this.earlyStop = earlyStop;
         this.contractors = sigmaRuleset.getContractors();
         this.cpfs = cpfs;
         this.rules = null;
@@ -144,11 +152,17 @@ public class SlideRepair<I extends Comparable<? super I>> {
 
     public SlideRepair(SigmaRuleset sigmaRuleset, NonConstantCostModel costModel,
                        NullBehavior nullBehavior, CPFRepairSelection repairSelection) throws RepairException {
-        this(null, sigmaRuleset, costModel, nullBehavior, repairSelection);
+        this(null, sigmaRuleset, costModel, nullBehavior, repairSelection, true);
     }
 
     public SlideRepair(Set<CPF> cpfs, SigmaRuleset sigmaRuleset, NonConstantCostModel costModel,
                        NullBehavior nullBehavior, CPFRepairSelection repairSelection) throws RepairException {
+        this(cpfs, sigmaRuleset, costModel, nullBehavior, repairSelection, true);
+    }
+
+    public SlideRepair(Set<CPF> cpfs, SigmaRuleset sigmaRuleset, NonConstantCostModel costModel,
+                       NullBehavior nullBehavior, CPFRepairSelection repairSelection, boolean earlyStop) throws RepairException {
+        this.earlyStop = earlyStop;
         this.contractors = sigmaRuleset.getContractors();
         this.cpfs = cpfs;
         this.rules = null;
@@ -250,7 +264,7 @@ public class SlideRepair<I extends Comparable<? super I>> {
         repairSignal.put(anchor, stationaryRepair.getFirst());
         repairCost += stationaryRepair.getSecond();
 
-        if (repairCost > bestCost) {
+        if (earlyStop && repairCost > bestCost) {
             return new Pair<>(null, bestCost);
         }
 
@@ -271,7 +285,7 @@ public class SlideRepair<I extends Comparable<? super I>> {
             repairSignal.put(forwardPointer, transitionRepair.getFirst());
             repairCost += transitionRepair.getSecond();
 
-            if (repairCost > bestCost) {
+            if (earlyStop && repairCost > bestCost) {
                 return new Pair<>(null, bestCost);
             }
 
@@ -296,7 +310,7 @@ public class SlideRepair<I extends Comparable<? super I>> {
             repairSignal.put(backwardPointer, transitionRepair.getFirst());
             repairCost += transitionRepair.getSecond();
 
-            if (repairCost > bestCost) {
+            if (earlyStop && repairCost > bestCost) {
                 return new Pair<>(null, bestCost);
             }
 

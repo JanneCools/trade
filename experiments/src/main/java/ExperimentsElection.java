@@ -23,8 +23,8 @@ import java.util.*;
 public class ExperimentsElection extends Experiments<LocalDateTime> {
 
     public ExperimentsElection(
-            String path, String queryFilename, String rulesetFilename, String timeAttribute, String partitionAttribute) {
-        super(path, queryFilename, rulesetFilename, timeAttribute, partitionAttribute);
+            String path, String queryFilename, String rulesetFilename, String timeAttribute, String partitionAttribute, boolean earlyStop) {
+        super(path, queryFilename, rulesetFilename, timeAttribute, partitionAttribute, earlyStop);
     }
 
     public ExperimentsElection(ExperimentsElection other) {
@@ -202,6 +202,7 @@ public class ExperimentsElection extends Experiments<LocalDateTime> {
         String timeAttribute = "value_valid_from";
         String partitionAttribute = "page_id";
 
+        boolean earlyStop = true;
         boolean baseline = true;
         int numAnchors = 1;
 
@@ -216,7 +217,7 @@ public class ExperimentsElection extends Experiments<LocalDateTime> {
         Validator<LocalDateTime> validator = new Validator<>(path + "/error_locations.txt");
         for (int i = 0; i < amount; i++) {
             System.out.println("Run " + i);
-            ExperimentsElection rw = new ExperimentsElection(path, datasetFilename, rulesetFilename, timeAttribute, partitionAttribute);
+            ExperimentsElection rw = new ExperimentsElection(path, datasetFilename, rulesetFilename, timeAttribute, partitionAttribute, earlyStop);
 
             rw.readDatasetFromPath(";");
             rw.readRulesFromPath();
@@ -256,10 +257,12 @@ public class ExperimentsElection extends Experiments<LocalDateTime> {
 //        String rulesetFilename = "rules.rbx";
 //        String timeAttribute = "value_valid_from";
 //        String partitionAttribute = "page_id";
-//        ExperimentsElection rw = new ExperimentsElection(path, datasetFilename, rulesetFilename, timeAttribute, partitionAttribute);
 //
+//        boolean earlyStop = true;
 //        boolean baseline = true;
 //        int numAnchors = 1;
+//
+//        ExperimentsElection rw = new ExperimentsElection(path, datasetFilename, rulesetFilename, timeAttribute, partitionAttribute, earlyStop);
 //
 //        System.out.println("Running RepairWikipediaElection with " + (baseline ? "baseline" : "customized") + " cost model and " + numAnchors + " anchors.");
 //
