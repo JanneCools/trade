@@ -1,4 +1,4 @@
-# TRADE (Transition-Rule-based Anomaly Detection Engine)
+# TRADE: Transition-Rule-based Anomaly Detection Engine
 
 This repository contains the reproducibility artifacts for the TRADE framework,
 a logic-based approach for detecting anomalies in sparse and irregular time series using transition rules.
