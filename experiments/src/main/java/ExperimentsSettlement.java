@@ -131,10 +131,6 @@ public class ExperimentsSettlement extends Experiments<LocalDateTime> {
         ));
     }
 
-    /**
-     * This main function creates a new instance of the RepairCustomGAIT class in each run,
-     * and thus executes the preprocessing/initialization phase each run.
-     */
     public static void main(String[] args) throws ChronosException, IOException, ParseException, RepairException, DataReadException {
         long startTotal = System.currentTimeMillis();
 
@@ -187,14 +183,16 @@ public class ExperimentsSettlement extends Experiments<LocalDateTime> {
     }
 
     /**
-     * This main function takes a copy of the RepairCustomGAIT class in each run,
-     * so only executes the preprocessing/initialization once.
+     * This main function runs the scalability tests. It only executes the preprocessing phase once,
+     * as this is not influenced by the dataset size
      */
 //    public static void main(String[] args) throws ChronosException, IOException, ParseException, RepairException, DataReadException {
 //        long startTotal = System.currentTimeMillis();
 //
+//        String tuples = "5000";
+//
 //        String path = "data/settlement";
-//        String datasetFilename = "dataset.csv";
+//        String datasetFilename = "dataset_" + tuples + ".csv";
 //        String rulesetFilename = "rules.rbx";
 //        String timeAttribute = "value_valid_from";
 //        String partitionAttribute = "page_id";
@@ -204,7 +202,8 @@ public class ExperimentsSettlement extends Experiments<LocalDateTime> {
 //
 //        ExperimentsSettlement rw = new ExperimentsSettlement(path, datasetFilename, rulesetFilename, timeAttribute, partitionAttribute, earlyStop);
 //
-//        System.out.println("Running ExperimentsSettlement with " + (baseline ? "baseline" : "customized") + " cost model and " + numAnchors + " anchors.");
+//        System.out.println("Running Scalability tests with " + tuples + " tuples, "
+//                + (baseline ? "baseline" : "customized") + " cost model and " + numAnchors + " anchors.");
 //
 //        // read dataset and rules
 //        long start = System.currentTimeMillis();
@@ -221,27 +220,15 @@ public class ExperimentsSettlement extends Experiments<LocalDateTime> {
 //
 //        // execute repair
 //        int amount = 10;
-//        double precision = 0.0;
-//        double recall = 0.0;
-//        double f1 = 0.0;
 //        double execution_time = 0.0;
 //        for (int i = 0; i < amount; i++) {
 //            ExperimentsSettlement copy = new ExperimentsSettlement(rw);
 //            Validator<LocalDateTime> validator = new Validator<>(copy.groundTruthPath);
 //            double duration = copy.run(numAnchors, validator, new HashSet<>());
 //
-//            validator.setPartitionedLocations(copy.convertRepairLocations(validator.getPartitionedLocations()));
-//            Map<String, List<Validator.Location<LocalDateTime>>> convertedLocations = copy.convertRepairLocations();
-//            List<Double> metrics = validator.validate(copy.validationPath, convertedLocations, numCells);
-//            precision += metrics.get(0);
-//            recall += metrics.get(1);
-//            f1 += metrics.get(2);
 //            execution_time += duration;
-//            System.out.println(duration + " ; " + metrics);
+//            System.out.println(duration);
 //        }
-//        System.out.println("Avg precision: " + precision / amount);
-//        System.out.println("Avg recall: " + recall / amount);
-//        System.out.println("Avg f1: " + f1 / amount);
 //        System.out.println("Avg execution_time: " + execution_time / amount);
 //
 //        long endTotal = System.currentTimeMillis();

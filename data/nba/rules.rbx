@@ -52,13 +52,6 @@ NOT position == 'SG' & drb > 25
 NOT position == 'SF' & drb > 30
 NOT position == 'PF' & drb > 35
 
---NOT position == 'PG' & orb > 10
---NOT position == 'SG' & orb > 15
---NOT position == 'SF' & orb > 20
---NOT position == 'PF' & orb > 25
-
---NOT trb == drb & trb != orb
---NOT trb == orb & trb != drb
 NOT trb < drb & trb < orb
 NOT trb > drb & trb > orb
 

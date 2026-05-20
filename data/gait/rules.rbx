@@ -35,8 +35,6 @@
 @leg_right:decimal_scale_1
 @leg_left:decimal_scale_1
 
--- selection-rules
-
 -- univariate
 gender in {'f','F','m','M'}
 gender_txt in {'Female', 'Male'}
@@ -164,9 +162,6 @@ NOT hearing_aid_no_yes != 1 & hearing_aid_side_txt != 'unknown'
 NOT height_m == 999 & bmi_kg_m2 != 999
 NOT weight_kg == 999 & bmi_kg_m2 != 999
 
---NOT leg_left != 999 & height_m != 999 & leg_left > S^-400(height_m)
---NOT leg_right != 999 & height_m != 999 & leg_right > S^-400(height_m)
-
 -- multivariate: legs
 NOT leg_left != 999 & leg_left > S^30(leg_right)
 NOT leg_right != 999 & leg_left < S^-30(leg_right)
@@ -184,7 +179,6 @@ NOT hearing_aid_side_txt#curr == 'left' & hearing_aid_side_txt#next == 'right'
 NOT hearing_aid_side_txt#curr == 'left' & hearing_aid_side_txt#next == 'unknown'
 NOT hearing_aid_side_txt#curr == 'right' & hearing_aid_side_txt#next == 'left'
 NOT hearing_aid_side_txt#curr == 'right' & hearing_aid_side_txt#next == 'unknown'
---NOT hearing_aid_side_txt#curr == 'right' & hearing_aid_side_txt#next in {'left', 'unknown'}
 
 -- transition: mmse
 NOT mmse#next != 999 & mmse#next > S^3(mmse#curr)

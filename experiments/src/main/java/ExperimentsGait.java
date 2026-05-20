@@ -196,10 +196,6 @@ public class ExperimentsGait extends Experiments<LocalDate> {
         return new NonConstantCostModel(TRuleset.unfold(costFunctions), new HashMap<>());
     }
 
-    /**
-     * This main function creates a new instance of the RepairCustomGAIT class in each run,
-     * and thus executes the preprocessing/initialization phase each run.
-     */
     public static void main(String[] args) throws ChronosException, DataReadException, ParseException, IOException, RepairException {
         long startTotal = System.currentTimeMillis();
 
@@ -251,68 +247,6 @@ public class ExperimentsGait extends Experiments<LocalDate> {
         long endTotal = System.currentTimeMillis();
         System.out.println("Total runtime: " + (endTotal - startTotal)/1000.0/60.0 + " minutes");
     }
-
-    /**
-     * This main function takes a copy of the RepairCustomGAIT class in each run,
-     * so only executes the preprocessing/initialization once.
-     */
-//    public static void main(String[] args) throws ChronosException, DataReadException, ParseException, IOException, RepairException {
-//        long startTotal = System.currentTimeMillis();
-//
-//        String path = "data/gait";
-//        String datasetFilename = "dataset.csv";
-//        String rulesetFilename = "rules.rbx";
-//        String timeAttribute = "datum";
-//        String partitionAttribute = "patient_upn";
-//        boolean earlyStop = true;
-//        boolean baseline = true;
-//        int numAnchors = 1;
-//
-//        ExperimentsGait rd = new ExperimentsGait(path, datasetFilename, rulesetFilename, timeAttribute, partitionAttribute, earlyStop);
-//
-//        System.out.println("Running ExperimentsGait with " + (baseline ? "baseline" : "customized") + " cost model and " + numAnchors + " anchors.");
-//
-//        // read dataset and rules
-//        long start = System.currentTimeMillis();
-//        rd.readDatasetFromPath(";");
-//        rd.readRulesFromPath();
-//        long stop = System.currentTimeMillis();
-//        System.out.println("Time for reading dataset and rules: " + (stop-start)/1000.0 + " seconds");
-//
-//        double dur = rd.initialize(baseline, Set.of("year"), NullBehavior.NO_REPAIR);
-//        System.out.println("time for initialization: " + dur + " minutes");
-//
-//        int numCells = rd.fullDataset.getSize() * rd.fullDataset.getContract().getAttributes().size();
-//
-//        // execute repair
-//        int amount = 10;
-//        double precision = 0.0;
-//        double recall = 0.0;
-//        double f1 = 0.0;
-//        double execution_time = 0.0;
-//        for (int i = 0; i < amount; i++) {
-//            System.out.println("Run " + i);
-//            ExperimentsGait copy = new ExperimentsGait(rd);
-//            Validator<LocalDate> validator = new Validator<>(copy.groundTruthPath);
-//            double duration = copy.run(numAnchors, validator, new HashSet<>());
-//
-//            validator.setPartitionedLocations(copy.convertRepairLocations(validator.getPartitionedLocations()));
-//            Map<String, List<Validator.Location<LocalDate>>> convertedLocations = copy.convertRepairLocations();
-//            List<Double> metrics = validator.validate(copy.validationPath, convertedLocations, numCells);
-//            precision += metrics.get(0);
-//            recall += metrics.get(1);
-//            f1 += metrics.get(2);
-//            execution_time += duration;
-//            System.out.println(duration + " ; " + metrics);
-//        }
-//        System.out.println("Avg precision: " + precision / amount);
-//        System.out.println("Avg recall: " + recall / amount);
-//        System.out.println("Avg f1: " + f1 / amount);
-//        System.out.println("Avg execution_time: " + execution_time / amount);
-//
-//        long endTotal = System.currentTimeMillis();
-//        System.out.println("Total runtime: " + (endTotal-startTotal)/1000.0/60.0 + " minutes");
-//    }
 
 
 }
