@@ -48,7 +48,7 @@ public abstract class CostModel<F extends CostFunction> {
             .stream()
             .filter(a -> getCostFunction(a) != null)
             .mapToInt(a -> getCostFunction(a)
-                .computeCost(original.get(a), modified.get(a),original))
+                .cost(original.get(a), modified.get(a),original))
             .anyMatch(cost -> cost == Integer.MAX_VALUE)
         )
         
@@ -60,7 +60,7 @@ public abstract class CostModel<F extends CostFunction> {
             .filter(a -> !original.getAttributes().contains(a))
             .filter(a -> getCostFunction(a) != null)
             .mapToInt(a -> getCostFunction(a)
-                .computeCost(null, modified.get(a),original))
+                .cost(null, modified.get(a),original))
             .anyMatch(cost -> cost == Integer.MAX_VALUE)
         )
             return Integer.MAX_VALUE;
@@ -77,7 +77,7 @@ public abstract class CostModel<F extends CostFunction> {
             .stream()
             .filter(a -> !original.getAttributes().contains(a))
             .filter(a -> getCostFunction(a) != null)
-            .mapToInt(a -> getCostFunction(a).computeCost(
+            .mapToInt(a -> getCostFunction(a).cost(
                 null,
                 modified.get(a),
                 original))
