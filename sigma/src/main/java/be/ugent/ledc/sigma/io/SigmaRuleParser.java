@@ -114,7 +114,7 @@ public class SigmaRuleParser
      * @param lines
      * @return
      * @throws java.io.FileNotFoundException
-     * @throws be.ugent.ledc.core.ParseException
+     * @throws ParseException
     */
     public static Map<String, SigmaContractor<?>> parseContractors(List<String> lines) throws ParseException {
         //Initialize the mapping of contractors
@@ -137,7 +137,7 @@ public class SigmaRuleParser
      * @param lines
      * @param contractors
      * @return 
-     * @throws be.ugent.ledc.core.ParseException
+     * @throws ParseException
     */
     public static SigmaRuleset parseSigmaRuleSet(List<String> lines, Map<String, SigmaContractor<?>> contractors) throws ParseException {
         //Initialize the mapping of contractors

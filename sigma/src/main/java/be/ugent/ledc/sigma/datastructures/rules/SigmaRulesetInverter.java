@@ -70,9 +70,8 @@ public class SigmaRulesetInverter {
             for (CPF cpf : CPFs) {
 
                 Set<AbstractAtom<?, ?, ?>> cpfAtoms = new HashSet<>(cpf.getAtoms());
-                cpfAtoms.add(inverseAtom);
 
-                CPF extendedCPF = CPFImplicator.imply(new CPF(cpfAtoms));
+                CPF extendedCPF = CPFImplicator.implyWithAtoms(new CPF(cpfAtoms), Set.of(inverseAtom));
                 extendedCPFs.add(extendedCPF);
             }
 

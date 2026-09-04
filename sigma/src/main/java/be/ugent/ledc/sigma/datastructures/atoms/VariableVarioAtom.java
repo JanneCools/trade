@@ -105,6 +105,10 @@ public class VariableVarioAtom<T extends Comparable<? super T>, U extends Compar
                 long partialSillSph = parameters.get(0);
                 long rangeSph = parameters.get(1);
                 long nuggetSph = parameters.get(2);
+                // Spherical model reaches its plateau (sill) once distance >= range
+                if (diff > rangeSph) {
+                    return partialSillSph + nuggetSph;
+                }
                 double value1 = (3*diff) / (2.0*rangeSph);
                 double value2 = Math.pow(diff, 3) / (2.0 * Math.pow(rangeSph, 3));
                 return Math.round(partialSillSph * (value1 - value2)) + nuggetSph;
@@ -236,7 +240,9 @@ public class VariableVarioAtom<T extends Comparable<? super T>, U extends Compar
         else {
             throw new DataException("Passed attribute value "
                     + o.get(getLeftAttribute())
-                    + " or " + o.get(getRightAttribute())
+                    + ", " + o.get(getRightAttribute())
+                    + ", " + o.get(getVarioAttribute1())
+                    + " or " + o.get(getVarioAttribute2())
                     + " does not fulfill contract specified by "
                     + getContractor());
         }
@@ -255,6 +261,7 @@ public class VariableVarioAtom<T extends Comparable<? super T>, U extends Compar
     @Override
     public int hashCode() {
         int result = super.hashCode();
+        result = 31 * result + model.hashCode();
         for (long p: parameters)
             result = 31 * result + Objects.hashCode(p);
         return result;

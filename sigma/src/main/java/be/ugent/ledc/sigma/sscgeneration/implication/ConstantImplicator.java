@@ -29,25 +29,24 @@ import java.util.stream.Collectors;
 /**
  * A RuleImplicator that operates on rules for which the generator appears only 
  * in non-variable atoms (i.e., constant atoms or set atoms).
- * 
  * The implicator draws its efficiency by converting the generating atoms into 
  * intervals on the domain of the attribute. For nominal data, this requires a
  * mapping of each nominal element onto an integer. The encoding is done in a greedy way
  * by first encoding larger sets.
- * 
+ *
  * In each case, this allows to index rules by an interval on the generating attribute.
  * Implication for such a structures is done by using the ordinal implicator algorithm
- * proposed in https://doi.org/10.1016/j.ins.2021.12.114
- * 
+ * proposed <a href="https://doi.org/10.1016/j.ins.2021.12.114">here</a>.
+ *
  * @author abronsel
  * @param <T>
  */
-public class ConstantImplicator<T extends Comparable<? super T>> implements RuleImplicator<T, SigmaRule>
+public class ConstantImplicator<T extends Comparable<? super T>> extends SigmaRuleImplicator<T>
 {
     @Override
     public Set<SigmaRule> generate(String generator, SigmaContractor<T> generatorContractor, Set<SigmaRule> contributors)
     {
-        final Set<SigmaRule> rules = new HashSet();
+        final Set<SigmaRule> rules = new HashSet<>();
         
         //Are we dealing with strings?
         if(generatorContractor instanceof NominalContractor)
@@ -114,7 +113,6 @@ public class ConstantImplicator<T extends Comparable<? super T>> implements Rule
                     {
                         ((SetAtom<String, ?>)atom)
                             .getConstants()
-                            .stream()
                             .forEach(c -> stringValues.merge(c, stringValues.size(), Integer::min));
                         
                         generatingAtoms.add(new SetOrdinalAtom<>
@@ -125,7 +123,7 @@ public class ConstantImplicator<T extends Comparable<? super T>> implements Rule
                             ((SetAtom<String,?>)atom)
                                 .getConstants()
                                 .stream()
-                                .map(s -> stringValues.get(s))
+                                .map(stringValues::get)
                                 .collect(Collectors.toSet())
                         ));
                     }
@@ -138,7 +136,7 @@ public class ConstantImplicator<T extends Comparable<? super T>> implements Rule
             
             CPF residual = new CPF(otherAtoms);
             
-            Set<Interval<Integer>> intervals = AtomOperations.<Integer>getIntervalsFromOrdinalAtoms(generatingAtoms, generator);
+            Set<Interval<Integer>> intervals = AtomOperations.getIntervalsFromOrdinalAtoms(generatingAtoms, generator);
             
             for(Interval<Integer> i: intervals)
             {
@@ -178,7 +176,7 @@ public class ConstantImplicator<T extends Comparable<? super T>> implements Rule
             
             CPF residual = new CPF(otherAtoms);
             
-            Set<Interval<O>> intervals = AtomOperations.<O>getIntervalsFromOrdinalAtoms(generatingAtoms, generator);
+            Set<Interval<O>> intervals = AtomOperations.getIntervalsFromOrdinalAtoms(generatingAtoms, generator);
             
             for(Interval<O> i: intervals)
             {
@@ -199,7 +197,6 @@ public class ConstantImplicator<T extends Comparable<? super T>> implements Rule
      * based on the properties of the index keys.
      * @param <O>
      * @param index
-     * @param domain
      * @return 
      */
     private <O extends Comparable<? super O>> Set<SigmaRule> generate(OrdinalContractor<O> contractor, Map<Interval<O>, List<CPF>> index)
@@ -300,20 +297,20 @@ public class ConstantImplicator<T extends Comparable<? super T>> implements Rule
         }
         
         //Initialize stack
-        LinkedList<Sequence> stack = new LinkedList<>(leftIndex
+        LinkedList<Sequence<O>> stack = new LinkedList<>(leftIndex
             .keySet()
             .stream()
             .flatMap(range -> leftIndex
                 .get(range)
                 .stream()
-                .map(cpf -> new Sequence(cpf, range)))
-            .collect(Collectors.toList()));
+                .map(cpf -> new Sequence<>(cpf, range)))
+            .toList());
         
         //Continue until the stack is empty
         while(!stack.isEmpty())
         {
             //System.out.println("Stack size: " + stack.size());
-            Sequence base = stack.pop();
+            Sequence<O> base = stack.pop();
 
             Interval<O> bInterval = base.getLastGeneratorInterval();
             CPF baseCPF = base.getCpf();
@@ -361,7 +358,7 @@ public class ConstantImplicator<T extends Comparable<? super T>> implements Rule
                     }
                     else if(middleIndex.ceilingKey(Interval.closed(key.getLeftBound(),key.getLeftBound())) != null)
                     {
-                        stack.push(new Sequence(
+                        stack.push(new Sequence<>(
                             joined,
                             key,
                             base.getLastGeneratorInterval())
@@ -389,7 +386,7 @@ public class ConstantImplicator<T extends Comparable<? super T>> implements Rule
             );
     }
 
-    private class Sequence<O extends Comparable<? super O>>
+    private static class Sequence<O extends Comparable<? super O>>
     {
         private final Interval<O> lastGeneratorInterval;
 

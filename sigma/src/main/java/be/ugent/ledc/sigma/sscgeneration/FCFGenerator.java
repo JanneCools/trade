@@ -1,11 +1,11 @@
 package be.ugent.ledc.sigma.sscgeneration;
 
+import be.ugent.ledc.sigma.sscgeneration.implication.SigmaRuleImplicationFactory;
 import be.ugent.ledc.sigma.sscgeneration.implication.StandardImplicationFactory;
 import be.ugent.ledc.sigma.datastructures.contracts.SigmaContractor;
 import be.ugent.ledc.sigma.datastructures.rules.SigmaRule;
 import be.ugent.ledc.sigma.datastructures.rules.SigmaRuleset;
 import be.ugent.ledc.sigma.datastructures.rules.SigmaRulesetOperations;
-import be.ugent.ledc.sigma.sscgeneration.implication.ImplicationFactory;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -17,13 +17,13 @@ import java.util.stream.Collectors;
  */
 public final class FCFGenerator implements SCCGenerator<SigmaRule, SigmaRuleset>
 {
-    public static int VERBOSITY = 0;
+    public static int VERBOSITY = 4;
     
     /**
      * The implication factory used during SCC generation. The factory decides
      * in each node of the FCF structure, which implication algorithm is used.
      */
-    private final ImplicationFactory implicationFactory;
+    private final SigmaRuleImplicationFactory implicationFactory;
     
     /**
      * A comparator to sort attributes prior to building the FCF structure
@@ -36,7 +36,7 @@ public final class FCFGenerator implements SCCGenerator<SigmaRule, SigmaRuleset>
      */
     private final boolean useRootPruning;
 
-    public FCFGenerator(ImplicationFactory implicationFactory, Comparator<String> attributeComparator, boolean useRootPruning)
+    public FCFGenerator(SigmaRuleImplicationFactory implicationFactory, Comparator<String> attributeComparator, boolean useRootPruning)
     {
         this.implicationFactory = implicationFactory;
         this.attributeComparator = attributeComparator;
@@ -67,6 +67,7 @@ public final class FCFGenerator implements SCCGenerator<SigmaRule, SigmaRuleset>
         if(VERBOSITY >= 1)
         {
             System.out.println("#partitions: " + partition.size());
+            System.out.println();
         }
         
         //For each partition class, create a sufficient set
@@ -104,6 +105,7 @@ public final class FCFGenerator implements SCCGenerator<SigmaRule, SigmaRuleset>
         if(VERBOSITY >= 1)
         {
             System.out.println("Generators: " + generators);
+            System.out.println("---------------------------------------");
         }
         
         //Generate implicit rules
@@ -120,7 +122,7 @@ public final class FCFGenerator implements SCCGenerator<SigmaRule, SigmaRuleset>
         return rules;
     }
     
-    private Set<SigmaRule> generate(Set<SigmaRule> allMaxRules, Set<SigmaRule> currentBranchRules, Map<String, SigmaContractor<?>> sigmaContractors, List<String> remainingAttributes, Set<String> nonInvolvedAttributes)
+    private <T extends Comparable<? super T>> Set<SigmaRule> generate(Set<SigmaRule> allMaxRules, Set<SigmaRule> currentBranchRules, Map<String, SigmaContractor<?>> sigmaContractors, List<String> remainingAttributes, Set<String> nonInvolvedAttributes)
     {
         //Iterator over remaining attributes
         Iterator<String> attributeIterator = remainingAttributes.iterator();
@@ -150,23 +152,22 @@ public final class FCFGenerator implements SCCGenerator<SigmaRule, SigmaRuleset>
             
             if (candidateContributors.size() > 1)
             {
-                
-                
+
                 if(VERBOSITY >= 4)
                 {
-                    System.out.println("\nContributors: ");
-                    candidateContributors.stream().forEach(System.out::println);
-                    System.out.println("");
+                    System.out.println("\n\tContributors: ");
+                    candidateContributors.forEach(cc -> System.out.println("\t- " + cc));
+                    System.out.println();
                 }
-                
+
                 // Request a rule implicator at the factory and use it to imply rules
                 Set<SigmaRule> newRules = implicationFactory.create(
                     generator,
-                    sigmaContractors.get(generator),
+                        (SigmaContractor<T>) sigmaContractors.get(generator),
                     candidateContributors
                 ).generate(
                     generator,
-                    sigmaContractors.get(generator),
+                        (SigmaContractor<T>) sigmaContractors.get(generator),
                     candidateContributors
                 );
                 
@@ -174,9 +175,9 @@ public final class FCFGenerator implements SCCGenerator<SigmaRule, SigmaRuleset>
                 {
                     if(!newRules.isEmpty())
                     {
-                        System.out.println("\nNew rules (before cleaning): ");
-                        newRules.stream().forEach(System.out::println);
-                        System.out.println("");
+                        System.out.println("\tNew rules (before cleaning): ");
+                        newRules.forEach(nr -> System.out.println("\t- " + nr));
+                        System.out.println();
                     }
                 }
 
@@ -184,24 +185,24 @@ public final class FCFGenerator implements SCCGenerator<SigmaRule, SigmaRuleset>
                 if (!newRules.isEmpty()) {
 
                     // Replace redundant edit rules in newRules by their dominant edit rules in allMaxRules
-                    Map<SigmaRule, SigmaRule> newRulesDominanceMapping = mapOnDominant(newRules, allMaxRules);
+                    Map<SigmaRule, Set<SigmaRule>> newRulesDominanceMapping = mapOnDominant(newRules, allMaxRules);
                     newRules = newRules
                         .stream()
-                        .map(newRulesDominanceMapping::get)
+                        .flatMap(newRule -> newRulesDominanceMapping.get(newRule).stream())
                         .collect(Collectors.toSet());
 
                     // Replace redundant edit rules in allMaxRules by their dominant edit rules in newRules
-                    Map<SigmaRule, SigmaRule> allMaxRulesDominanceMapping = mapOnDominant(allMaxRules, newRules);
+                    Map<SigmaRule, Set<SigmaRule>> allMaxRulesDominanceMapping = mapOnDominant(allMaxRules, newRules);
                     allMaxRules = allMaxRules
                         .stream()
-                        .map(allMaxRulesDominanceMapping::get)
+                        .flatMap(newRule -> allMaxRulesDominanceMapping.get(newRule).stream())
                         .collect(Collectors.toSet());
 
                     // Replace redundant edit rules in currentBranchRules by their dominant edit rules in newRules
-                    Map<SigmaRule, SigmaRule> currentBranchRulesDominanceMapping = mapOnDominant(currentBranchRules, newRules);
+                    Map<SigmaRule, Set<SigmaRule>> currentBranchRulesDominanceMapping = mapOnDominant(currentBranchRules, newRules);
                     currentBranchRules = currentBranchRules
                         .stream()
-                        .map(currentBranchRulesDominanceMapping::get)
+                        .flatMap(newRule -> currentBranchRulesDominanceMapping.get(newRule).stream())
                         .collect(Collectors.toSet());
 
                     // Add all generated essentially new rules to the set of allMaxRules
@@ -213,9 +214,9 @@ public final class FCFGenerator implements SCCGenerator<SigmaRule, SigmaRuleset>
 
                     if(VERBOSITY >= 2)
                     {
-                        System.out.println("\nNew rules (after cleaning): ");
-                        newRules.stream().forEach(System.out::println);
-                        System.out.println("--");   
+                        System.out.println("\tNew rules (after cleaning): ");
+                        newRules.forEach(nr -> System.out.println("\t- " + nr));
+                        System.out.println("---------------------------------------");
                     }
                     
                     if (!remainingAttributes.isEmpty() && nextLevelRules.size() >= 2) {
@@ -237,8 +238,17 @@ public final class FCFGenerator implements SCCGenerator<SigmaRule, SigmaRuleset>
                 }
                 else
                 {
-                    if(VERBOSITY >= 3)
-                        System.out.println("No new rules (after cleaning)");
+                    if(VERBOSITY >= 3) {
+                        System.out.println("\tNo new rules (after cleaning)");
+                        System.out.println("---------------------------------------");
+                    }
+
+                }
+            } else {
+                if(VERBOSITY >= 2)
+                {
+                    System.out.println("\n\tNo contributors");
+                    System.out.println("---------------------------------------");
                 }
             }
         }
@@ -260,29 +270,37 @@ public final class FCFGenerator implements SCCGenerator<SigmaRule, SigmaRuleset>
         );
     }
     
-    private Map<SigmaRule, SigmaRule> mapOnDominant(Set<SigmaRule> potentiallyRedundant, Set<SigmaRule> potentiallyDominant) {
+    private Map<SigmaRule, Set<SigmaRule>> mapOnDominant(Set<SigmaRule> potentiallyRedundant, Set<SigmaRule> potentiallyDominant) {
 
-        Map<SigmaRule, SigmaRule> dominanceMapping = new HashMap<>();
+        Map<SigmaRule,  Set<SigmaRule>> dominanceMapping = new HashMap<>();
 
-        for (SigmaRule ruleA : potentiallyRedundant) {
+        for (SigmaRule ruleA : potentiallyRedundant)
+        {
+            dominanceMapping.put(ruleA, new HashSet<>());
 
-            boolean isMapped = false;
-
-            for (SigmaRule ruleB : potentiallyDominant) {
-                if (ruleA.isRedundantTo(ruleB)) {
-                    dominanceMapping.put(ruleA, ruleB);
-                    isMapped = true;
-                    break;
+            for (SigmaRule ruleB : potentiallyDominant)
+            {
+                if (ruleA.isRedundantTo(ruleB))
+                {
+                    dominanceMapping.get(ruleA).add(ruleB);
                 }
             }
 
-            if (!isMapped) {
-                dominanceMapping.put(ruleA, ruleA);
+            //Ensure the dominant rules are maximal
+            dominanceMapping
+                .get(ruleA)
+                .removeIf(redRule -> dominanceMapping
+                    .get(ruleA)
+                    .stream()
+                    .anyMatch(domRule -> !domRule.equals(redRule) && redRule.isRedundantTo(domRule))
+                );
+            
+            if (dominanceMapping.get(ruleA).isEmpty())
+            {
+                dominanceMapping.get(ruleA).add(ruleA);
             }
-
         }
 
         return dominanceMapping;
-
     }
 }

@@ -10,11 +10,12 @@ import java.util.stream.Stream;
 import be.ugent.ledc.sigma.sscgeneration.SCCGenerator;
 
 public class SCCSigmaRuleset extends SigmaRuleset {
+
     private SCCSigmaRuleset(Map<String, SigmaContractor<?>> contractors, Set<SigmaRule> sigmaRules) {
         super(contractors, sigmaRules);
     }
 
-    public static SCCSigmaRuleset create(SigmaRuleset ruleset, SCCGenerator generator) {
+    public static SCCSigmaRuleset create(SigmaRuleset ruleset, SCCGenerator<SigmaRule, SigmaRuleset> generator) {
         return new SCCSigmaRuleset(
                 ruleset.getContractors(),
                 generator.generateSCCSet(ruleset)

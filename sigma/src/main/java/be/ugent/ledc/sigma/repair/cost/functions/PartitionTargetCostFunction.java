@@ -35,11 +35,11 @@ public class PartitionTargetCostFunction <T extends Comparable<? super T>, C ext
         T target = partitionsTargets.get(partitionContractor.getFromDataObject(originalObject, partitionAttribute));
         if (target == null) return 1;
         long distanceToTarget = target.compareTo(repairedValue) <= 0
-                ? contractor.cardinality(new Interval<>(target, repairedValue))
-                : contractor.cardinality(new Interval<>(repairedValue, target));
+                ? contractor.cardinality(new Interval<>(target, repairedValue)) + 1
+                : contractor.cardinality(new Interval<>(repairedValue, target)) + 1;
 
         if (distanceToTarget <= 0) return Integer.MAX_VALUE;
 
-        return (int)distanceToTarget + 1;
+        return (int)distanceToTarget;
     }
 }

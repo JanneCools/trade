@@ -225,7 +225,7 @@ public class ParkerModel<C extends CostFunction> extends CostModel<C>
      * @param objectBag The bag of objects for which consensus must be reached.
      * @param localRules The rules that each object must satisfy
      * @return A map of induced iterable cost functions for each relevant attribute.
-     * @throws be.ugent.ledc.core.RepairException
+     * @throws RepairException
      */
     public IterableCostModel buildInducedCostModel(DataObject dirty,
                                                    Set<String> cover,

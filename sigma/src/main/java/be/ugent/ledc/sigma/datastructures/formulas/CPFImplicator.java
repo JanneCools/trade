@@ -13,56 +13,28 @@ import java.util.stream.Collectors;
 
 public class CPFImplicator {
 
-    public static boolean setIsImpliedBySet(Set<CPF> set1Inverted, Set<CPF> set2Inverted, Set<CPF> set2Implied) {
-        boolean implying = true;
-        Iterator<CPF> set1Iterator = set1Inverted.iterator();
-
-        while (implying && set1Iterator.hasNext()) {
-            CPF cpf1 = set1Iterator.next();
-
-            // check if cpf1 implies any cpf of inverted set 2
-            Iterator<CPF> set2Iterator = set2Inverted.iterator();
-            boolean implicationFound = false;
-            while (!implicationFound && set2Iterator.hasNext()) {
-                CPF cpf2 = set2Iterator.next();
-                implicationFound = cpf2.getAtoms().stream().allMatch(atom -> atomIsImpliedByCPF(cpf1, atom));
-            }
-
-            if (!implicationFound) {
-                // check for every CPF of the implied set 2 whether it implies at least one of the atoms of the inverted cpf1
-                Set<AbstractAtom<?,?,?>> invertedAtoms = cpf1.getAtoms().stream()
-                        .map(AbstractAtom::getInverse)
-                        .collect(Collectors.toSet());
-
-                set2Iterator = set2Implied.iterator();
-                while (implying && set2Iterator.hasNext()) {
-                    CPF cpf2 = set2Iterator.next();
-
-                    Iterator<AbstractAtom<?,?,?>> atomIterator = invertedAtoms.iterator();
-                    implicationFound = false;
-                    while (!implicationFound && atomIterator.hasNext()) {
-                        AbstractAtom<?,?,?> atom = atomIterator.next();
-                        implicationFound = atomIsImpliedByCPF(cpf2, atom);
-                    }
-
-                    if (!implicationFound)
-                        implying = false;
-                }
-            }
-        }
-
-        return implying;
+    public static CPF imply(CPF cpf) {
+        return implyWithAtoms(new CPF(Set.of(AbstractAtom.ALWAYS_TRUE)), cpf.getAtoms());
     }
 
-    public static CPF imply(List<AbstractAtom<?,?,?>> atomsToProcess, Set<AbstractAtom<?,?,?>> resultingAtoms) {
+    public static CPF implyWithAtoms(CPF cpf, Set<AbstractAtom<?, ?, ?>> atoms) {
+
+        List<AbstractAtom<?, ?, ?>> atomsToProcess = atoms
+                .stream()
+                .filter(at -> !at.isEquivalentTo(AbstractAtom.ALWAYS_TRUE))
+                .distinct()
+                .collect(Collectors.toCollection(LinkedList::new));
 
         if (atomsToProcess.stream().anyMatch(at -> at.isEquivalentTo(AbstractAtom.ALWAYS_FALSE))) {
             return new CPF(AbstractAtom.ALWAYS_FALSE);
         }
 
+        Set<AbstractAtom<?, ?, ?>> resultingAtoms = new HashSet<>(cpf.getAtoms());
+
         while (!atomsToProcess.isEmpty()) {
 
             AbstractAtom<?, ?, ?> atomToProcess = atomsToProcess.remove(0);
+
             Iterator<AbstractAtom<?, ?, ?>> resultingAtomIterator = resultingAtoms.iterator();
 
             Set<AbstractAtom<?, ?, ?>> newAtomsToProcess = new HashSet<>();
@@ -108,18 +80,45 @@ public class CPFImplicator {
 
     }
 
-    public static CPF imply(CPF cpf) {
+    public static boolean setIsImpliedBySet(Set<CPF> set1Inverted, Set<CPF> set2Inverted, Set<CPF> set2Implied) {
+        boolean implying = true;
+        Iterator<CPF> set1Iterator = set1Inverted.iterator();
 
-        List<AbstractAtom<?, ?, ?>> atomsToProcess = cpf
-                .getAtoms()
-                .stream()
-                .filter(at -> !at.isEquivalentTo(AbstractAtom.ALWAYS_TRUE))
-                .distinct()
-                .collect(Collectors.toCollection(LinkedList::new));
+        while (implying && set1Iterator.hasNext()) {
+            CPF cpf1 = set1Iterator.next();
 
-        Set<AbstractAtom<?, ?, ?>> resultingAtoms = new HashSet<>(Set.of(AbstractAtom.ALWAYS_TRUE));
+            // check if cpf1 implies any cpf of inverted set 2
+            Iterator<CPF> set2Iterator = set2Inverted.iterator();
+            boolean implicationFound = false;
+            while (!implicationFound && set2Iterator.hasNext()) {
+                CPF cpf2 = set2Iterator.next();
+                implicationFound = cpf2.getAtoms().stream().allMatch(atom -> atomIsImpliedByCPF(cpf1, atom));
+            }
 
-        return imply(atomsToProcess, resultingAtoms);
+            if (!implicationFound) {
+                // check for every CPF of the implied set 2 whether it implies at least one of the atoms of the inverted cpf1
+                Set<AbstractAtom<?,?,?>> invertedAtoms = cpf1.getAtoms().stream()
+                        .map(AbstractAtom::getInverse)
+                        .collect(Collectors.toSet());
+
+                set2Iterator = set2Implied.iterator();
+                while (implying && set2Iterator.hasNext()) {
+                    CPF cpf2 = set2Iterator.next();
+
+                    Iterator<AbstractAtom<?,?,?>> atomIterator = invertedAtoms.iterator();
+                    implicationFound = false;
+                    while (!implicationFound && atomIterator.hasNext()) {
+                        AbstractAtom<?,?,?> atom = atomIterator.next();
+                        implicationFound = atomIsImpliedByCPF(cpf2, atom);
+                    }
+
+                    if (!implicationFound)
+                        implying = false;
+                }
+            }
+        }
+
+        return implying;
     }
 
     public static boolean atomIsImpliedByCPF(CPF cpf, AbstractAtom<?, ?, ?> impliedAtom) {
@@ -171,8 +170,6 @@ public class CPFImplicator {
         } else if (impliedAtom instanceof VariableOrdinalAtom<?>) {
             return cpf.getAtoms().stream().anyMatch(at -> AtomImplicator.implies(at, impliedAtom))
                     || nonVariableImpliesVariableOrdinal(cpf.getAtoms(), (VariableOrdinalAtom<?>) impliedAtom);
-        } else if (impliedAtom instanceof VariableVarioAtom<?,?>) {
-            return  cpf.getAtoms().stream().anyMatch(at -> AtomImplicator.implies(at, impliedAtom));
         }
 
         return false;
@@ -282,7 +279,7 @@ public class CPFImplicator {
         return intervals.stream().allMatch(it ->
                 impliedIntervals.stream().anyMatch(ii ->
                         ii.allenEquals(it) || ii.allenStartedBy(it) || ii.allenFinishedBy(it) || ii.allenContains(it))
-        );
+                );
 
     }
 

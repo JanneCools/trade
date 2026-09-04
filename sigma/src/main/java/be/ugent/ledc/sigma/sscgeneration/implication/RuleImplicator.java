@@ -1,21 +1,21 @@
 package be.ugent.ledc.sigma.sscgeneration.implication;
 
-
 import be.ugent.ledc.core.datastructures.rules.Rule;
 import be.ugent.ledc.core.util.SetOperations;
 import be.ugent.ledc.sigma.datastructures.atoms.AbstractAtom;
 import be.ugent.ledc.sigma.datastructures.contracts.SigmaContractor;
 import be.ugent.ledc.sigma.datastructures.formulas.CPF;
 import be.ugent.ledc.sigma.datastructures.formulas.CPFImplicator;
-import be.ugent.ledc.sigma.datastructures.rules.SigmaRule;
 import java.util.Set;
 import java.util.stream.Stream;
 
 public interface RuleImplicator<T extends Comparable<? super T>, R extends Rule<?>>
 {
-    public boolean isApplicable(String generator, SigmaContractor<?> generatorContractor, Set<SigmaRule> candidateContributors);
+    default boolean isApplicable(String generator, SigmaContractor<?> generatorContractor, Set<R> candidateContributors) {
+        return false;
+    }
 
-    public Set<SigmaRule> generate(String generator, SigmaContractor<T> generatorContractor, Set<SigmaRule> candidateContributors);
+    Set<R> generate(String generator, SigmaContractor<T> generatorContractor, Set<R> candidateContributors);
 
     default CPF join(CPF cpf1, CPF cpf2)
     {
@@ -32,7 +32,7 @@ public interface RuleImplicator<T extends Comparable<? super T>, R extends Rule<
         joined
             .getAtoms()
             .removeIf(atom ->
-                atom.getAttributes().count() > 0
+                atom.getAttributes().findAny().isPresent()
                 && Stream.concat(
                     cpf1.getAtoms().stream(),
                     cpf2.getAtoms().stream())

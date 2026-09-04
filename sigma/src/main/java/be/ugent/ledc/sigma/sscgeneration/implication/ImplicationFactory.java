@@ -1,5 +1,6 @@
 package be.ugent.ledc.sigma.sscgeneration.implication;
 
+import be.ugent.ledc.core.datastructures.rules.Rule;
 import be.ugent.ledc.sigma.datastructures.contracts.SigmaContractor;
 import be.ugent.ledc.sigma.datastructures.rules.SigmaRule;
 import java.util.Set;
@@ -10,7 +11,7 @@ import java.util.Set;
  * structure.
  * @author abronsel
  */
-public interface ImplicationFactory
+public interface ImplicationFactory<R extends Rule<?>>
 {
-    public RuleImplicator create(String generator, SigmaContractor<?> rules, Set<SigmaRule> contributors);
+    <T extends Comparable<? super T>> RuleImplicator<T, R> create(String generator, SigmaContractor<T> rules, Set<SigmaRule> contributors);
 }

@@ -47,7 +47,7 @@ public class RepairOperations
      * of the target
      * @param repair
      * @return 
-     * @throws be.ugent.ledc.core.RepairException 
+     * @throws RepairException
      */
     public static <T extends Comparable<? super T>> ValueIterator<T> getPermittedValues(String target, T current, SigmaRuleset selectedRules, DataObject repair) throws RepairException
     {

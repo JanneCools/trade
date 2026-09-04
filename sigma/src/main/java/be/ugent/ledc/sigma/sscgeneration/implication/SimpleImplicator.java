@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
  * the generic sort-based algorithm used in ConstantImplicator.
  * @author abronsel
  */
-public class SimpleImplicator implements RuleImplicator<String, SigmaRule>
+public class SimpleImplicator extends SigmaRuleImplicator<String>
 {
     @Override
     public Set<SigmaRule> generate(String generator, SigmaContractor<String> generatorContractor, Set<SigmaRule> contributors)
@@ -94,7 +94,7 @@ public class SimpleImplicator implements RuleImplicator<String, SigmaRule>
             .stream()
             .map(cc -> buildValues(cc, generator))
             .flatMap(Set::stream)
-            .collect(Collectors.toList())
+            .toList()
             .stream()
             .collect(Collectors.groupingBy(e -> e, Collectors.counting()));
         
@@ -103,7 +103,7 @@ public class SimpleImplicator implements RuleImplicator<String, SigmaRule>
             .stream()
             .sorted(Map.Entry.comparingByValue())
             .map(Map.Entry::getKey)
-            .collect(Collectors.toList());
+            .toList();
 
         List<SigmaRule> candidateContributorsList = new ArrayList<>(multivariateRules);
 
@@ -120,8 +120,8 @@ public class SimpleImplicator implements RuleImplicator<String, SigmaRule>
             .collect(Collectors.toMap(
                 cln -> cln,
                 cln -> new ImpliedRule(
-                    candidateContributorsList.get(cln.get(0)),
-                    ImpliedRule.IMPLIED)));
+                        candidateContributorsList.get(cln.get(0)),
+                        ImpliedRule.IMPLIED)));
 
         for (int i = 1; i < sortedGeneratorValues.size(); i++)
         {
@@ -161,7 +161,7 @@ public class SimpleImplicator implements RuleImplicator<String, SigmaRule>
                 .values()
                 .stream()
                 .map(ImpliedRule::getRule)
-                .collect(Collectors.toList()));
+                .toList());
 
             mappedCurrentLevelNodes = mappedCurrentLevelNodes
                 .entrySet()
@@ -391,7 +391,7 @@ public class SimpleImplicator implements RuleImplicator<String, SigmaRule>
                     .equals(SigmaContractorFactory.STRING)));
     }
 
-    private class ImpliedRule
+    private static class ImpliedRule
     {
         private static final String IMPLIED = "implied";
         private static final String NEW = "new";
