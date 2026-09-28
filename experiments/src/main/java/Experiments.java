@@ -1,5 +1,5 @@
 import be.ugent.ledc.chronos.ChronosException;
-import be.ugent.ledc.chronos.algorithms.repair.PartitionSlideRepair;
+import be.ugent.ledc.chronos.algorithms.repair.TimeSeriesRepair;
 import be.ugent.ledc.chronos.datastructures.Signal;
 import be.ugent.ledc.chronos.datastructures.TemporalDataset;
 import be.ugent.ledc.chronos.io.RuleParser;
@@ -8,14 +8,11 @@ import be.ugent.ledc.core.ParseException;
 import be.ugent.ledc.core.RepairException;
 import be.ugent.ledc.core.binding.BindingException;
 import be.ugent.ledc.core.binding.DataReadException;
-import be.ugent.ledc.core.binding.DataWriteException;
 import be.ugent.ledc.core.binding.csv.CSVBinder;
 import be.ugent.ledc.core.binding.csv.CSVDataReader;
-import be.ugent.ledc.core.binding.csv.CSVDataWriter;
 import be.ugent.ledc.core.binding.csv.CSVProperties;
 import be.ugent.ledc.core.binding.jdbc.JDBCBinder;
 import be.ugent.ledc.core.cost.ConstantCostFunction;
-import be.ugent.ledc.core.cost.CostFunction;
 import be.ugent.ledc.core.dataset.ContractedDataset;
 import be.ugent.ledc.core.dataset.DataObject;
 import be.ugent.ledc.core.dataset.FixedTypeDataset;
@@ -24,8 +21,6 @@ import be.ugent.ledc.core.datastructures.Pair;
 import be.ugent.ledc.sigma.repair.NullBehavior;
 import be.ugent.ledc.sigma.repair.cost.models.ConstantCostModel;
 import be.ugent.ledc.sigma.repair.cost.models.NonConstantCostModel;
-import be.ugent.ledc.sigma.repair.selection.CPFRandomRepairSelection;
-import com.moandjiezana.toml.TomlWriter;
 
 import java.io.File;
 import java.io.IOException;
@@ -35,7 +30,6 @@ import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.text.DecimalFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -55,14 +49,14 @@ public abstract class Experiments<I extends Comparable<? super I>> {
     List<String> attributes;
     ContractedDataset fullDataset;
     TRuleset ruleset;
-    Map<String, CostFunction> costFunctions;
-    PartitionSlideRepair<I> repairEngine;
     Map<String, TemporalDataset<I>> partitionedDatasets;
+    TimeSeriesRepair<I> timeSeriesRepair;
 
     // repair info
     int numRepairs;
     Map<String, Pair<TemporalDataset<I>, Long>> repairedDatasets;
     Map<String, List<Pair<I, String>>> repairLocations;
+    Validator<I> validator;
 
 
     public Experiments(
@@ -92,8 +86,14 @@ public abstract class Experiments<I extends Comparable<? super I>> {
             this.fullDataset.addDataObject(new DataObject(d));
         }
         this.ruleset = new TRuleset(other.ruleset.getContractors(), other.ruleset.getRules());
-        this.costFunctions = new HashMap<>(other.costFunctions);
-        this.repairEngine = new PartitionSlideRepair<>(other.repairEngine);
+        this.timeSeriesRepair = new TimeSeriesRepair<>(other.timeSeriesRepair);
+    }
+
+    public static double getStd(List<Double> values, Double mean) {
+        double sumSquaredDiffs = values.stream()
+                .mapToDouble(v -> Math.pow(v - mean, 2))
+                .sum();
+        return Math.sqrt(sumSquaredDiffs / (values.size() - 1));
     }
 
     /**
@@ -168,10 +168,10 @@ public abstract class Experiments<I extends Comparable<? super I>> {
     protected abstract NonConstantCostModel getNonConstantCostModel(Set<String> exclude) throws ChronosException;
 
     /**
-     * Creates the partitioned slide repair engine with a constant cost model
+     * Creates  a constant cost model
      */
-    public void getConstantRepairEngine(Set<String> exclude, NullBehavior nullBehavior)
-            throws ChronosException, RepairException {
+    public ConstantCostModel getConstantCostModel(Set<String> exclude, NullBehavior nullBehavior)
+            throws ChronosException {
         Map<String, ConstantCostFunction> costFunctions = new HashMap<>();
         for (String attr: fullDataset.getContract().getAttributes()) {
             if (!attr.equals(timeAttribute) && !attr.equals(partitionAttribute) && !exclude.contains(attr)) {
@@ -179,124 +179,7 @@ public abstract class Experiments<I extends Comparable<? super I>> {
             }
         }
 
-        this.costFunctions = new LinkedHashMap<>();
-        this.costFunctions.putAll(costFunctions);
-
-        ConstantCostModel costModel = new ConstantCostModel(TRuleset.unfold(costFunctions));
-
-        this.repairEngine = new PartitionSlideRepair<>(
-                ruleset,
-                costModel,
-                nullBehavior,
-                new CPFRandomRepairSelection(),
-                earlyStop
-        );
-    }
-
-    /**
-     * Creates a partitioned slide repair engine with a non-constant cost model
-     */
-    public void getNonConstantRepairEngine(Set<String> exclude, NullBehavior nullBehavior) throws ChronosException, RepairException {
-        NonConstantCostModel costModel = getNonConstantCostModel(exclude);
-
-        this.repairEngine = new PartitionSlideRepair<>(
-                ruleset,
-                costModel,
-                nullBehavior,
-                new CPFRandomRepairSelection(),
-                earlyStop
-        );
-    }
-
-    /**
-     * Repair the datasets and return the repairs with their costs
-     */
-    public double repair(int numAnchors, Validator<I> validator, Set<String> considerAttributes) throws RepairException, ChronosException {
-        repairedDatasets = new HashMap<>();
-        List<String> keys = partitionedDatasets.keySet().stream().toList();
-        System.out.println("Number of partitioned datasets: " + keys.size());
-        double duration = 0.0;
-        int i = 0;
-        int divider = keys.size() < 10 ? 1 : keys.size() / 10;
-        for (String key : keys) {
-            if (i % divider == 0) {
-                System.out.println("i: " + i + " (size: " + partitionedDatasets.get(key).size() + ")");
-            }
-            i++;
-            I curr = partitionedDatasets.get(key).start();
-            int index = 1;
-            Set<I> elements = new HashSet<>();
-            // add start of time series
-            elements.add(curr);
-            if (numAnchors > 1) {
-                // add uniform points in time series
-                int size = partitionedDatasets.get(key).size();
-                int jumpSize = (size-2) / (numAnchors-1);
-                for (int j = 0; j < numAnchors-2; j++) {
-                    for (int k = 0; k < jumpSize; k++) {
-                        curr = partitionedDatasets.get(key).getObjectSignal().nextIndex(curr);
-                        index ++;
-                    }
-                    if (!considerAttributes.isEmpty()) {
-                        // search for timestamp without errors
-                        int tempIndex = index;
-                        I temp = curr;
-                        List<Validator.Location<I>> locations = validator.getPartitionedLocations().get(key);
-                        int finalTempIndex = tempIndex;
-                        Set<String> repairedAttributes = locations.stream()
-                                .filter(loc -> loc.index == finalTempIndex)
-                                .map(loc -> loc.attribute)
-                                .collect(Collectors.toSet());
-                        while (considerAttributes.stream().anyMatch(repairedAttributes::contains)) {
-                            temp = partitionedDatasets.get(key).getObjectSignal().previousIndex(temp);
-                            tempIndex--;
-                            int finalTempIndex1 = tempIndex;
-                            repairedAttributes = locations.stream()
-                                    .filter(loc -> loc.index == finalTempIndex1)
-                                    .map(loc -> loc.attribute)
-                                    .collect(Collectors.toSet());
-                        }
-                        elements.add(temp);
-                    } else {
-                        elements.add(curr);
-                    }
-                }
-                // add end of time series
-                index = partitionedDatasets.get(key).size();
-                curr = partitionedDatasets.get(key).end();
-                if (!considerAttributes.isEmpty()) {
-                    // search for timestamp without errors
-                    int tempIndex = index;
-                    I temp = curr;
-                    List<Validator.Location<I>> locations = validator.getPartitionedLocations().get(key);
-                    int finalTempIndex = tempIndex;
-                    Set<String> repairedAttributes = locations.stream()
-                            .filter(loc -> loc.index == finalTempIndex)
-                            .map(loc -> loc.attribute)
-                            .collect(Collectors.toSet());
-                    while (considerAttributes.stream().anyMatch(repairedAttributes::contains)) {
-                        temp = partitionedDatasets.get(key).getObjectSignal().previousIndex(temp);
-                        tempIndex--;
-                        int finalTempIndex1 = tempIndex;
-                        repairedAttributes = locations.stream()
-                                .filter(loc -> loc.index == finalTempIndex1)
-                                .map(loc -> loc.attribute)
-                                .collect(Collectors.toSet());
-                    }
-                    elements.add(temp);
-                } else {
-                    elements.add(curr);
-                }
-            }
-            long start = System.currentTimeMillis();
-            Pair<TemporalDataset<I>, Long> repair = repairEngine.repair(partitionedDatasets.get(key), elements);
-            long stop = System.currentTimeMillis();
-            duration += (stop - start)/1000.0/60.0;
-
-            repairedDatasets.put(key, repair);
-        }
-
-        return duration;
+        return new ConstantCostModel(TRuleset.unfold(costFunctions));
     }
 
 
@@ -304,7 +187,7 @@ public abstract class Experiments<I extends Comparable<? super I>> {
      * Gather all repair locations into a variable.
      * A repair location is defined by the partition key, the time value and the attribute that is repaired.
      */
-    private void findRepairLocations() {
+    public void findRepairLocations() {
         this.repairLocations = new LinkedHashMap<>();
 
         for (String key: partitionedDatasets.keySet()) {
@@ -319,6 +202,38 @@ public abstract class Experiments<I extends Comparable<? super I>> {
                 if (!origO.getAttributes().equals(repairedO.getAttributes()))
                     System.out.println("WARNING: different attributes between orig and repaired at function findRepairLocations");
                 for (String attr: origO.getAttributes()) {
+                    if (!Objects.equals(origO.get(attr), repairedO.get(attr))) {
+                        numRepairs++;
+                        if (!repairLocations.containsKey(key)) repairLocations.put(key, new ArrayList<>());
+                        repairLocations.get(key).add(new Pair<>(curr, attr));
+                    }
+                }
+
+                curr = origSignal.nextIndex(curr);
+            }
+        }
+    }
+
+
+    /**
+     * Gather all repair locations into a variable.
+     * A repair location is defined by the partition key, the time value and the attribute that is repaired.
+     */
+    private void findRepairLocations(Set<String> validateAttributes) {
+        this.repairLocations = new LinkedHashMap<>();
+
+        for (String key: partitionedDatasets.keySet()) {
+            Signal<I, DataObject> origSignal = partitionedDatasets.get(key).getObjectSignal();
+            Signal<I, DataObject> repairedSignal = repairedDatasets.get(key).getFirst().getObjectSignal();
+
+            I curr = origSignal.start();
+            while (curr != null) {
+                DataObject origO = origSignal.get(curr);
+                DataObject repairedO = repairedSignal.get(curr);
+
+                if (!origO.getAttributes().equals(repairedO.getAttributes()))
+                    System.out.println("WARNING: different attributes between orig and repaired at function findRepairLocations");
+                for (String attr: validateAttributes) {
                     if (!Objects.equals(origO.get(attr), repairedO.get(attr))) {
                         numRepairs++;
                         if (!repairLocations.containsKey(key)) repairLocations.put(key, new ArrayList<>());
@@ -378,12 +293,7 @@ public abstract class Experiments<I extends Comparable<? super I>> {
 
             int index = 1;
             I curr = signal.start();
-            int prevIndex = -1;
             for (Validator.Location<I> location: entry.getValue()) {
-                if (location.index < prevIndex) {
-                    System.out.println("test");
-                }
-                prevIndex = location.index;
                 while (index != location.index) {
                     index++;
                     curr = signal.nextIndex(curr);
@@ -406,18 +316,55 @@ public abstract class Experiments<I extends Comparable<? super I>> {
             throws ChronosException, RepairException {
         // partition the dataset
         createTemporalDatasets();
-        System.out.println("numer of partitions: " + this.partitionedDatasets.size());
+        System.out.println("number of partitions: " + this.partitionedDatasets.size());
 
         System.out.println("Started at time: " + new Date());
         long start = System.currentTimeMillis();
 
         // create repair engine
-        if (constant) getConstantRepairEngine(noRepairs, nullBehavior);
-        else getNonConstantRepairEngine(noRepairs, nullBehavior);
+        timeSeriesRepair = new TimeSeriesRepair<>(this.partitionedDatasets);
+        if (constant) {
+            timeSeriesRepair.initialize(
+                    getConstantCostModel(noRepairs, nullBehavior),
+                    ruleset, nullBehavior, this.earlyStop
+            );
+        } else {
+            timeSeriesRepair.initialize(
+                    getNonConstantCostModel(noRepairs),
+                    ruleset, nullBehavior, this.earlyStop
+            );
+        }
 
         long stop = System.currentTimeMillis();
-        return (stop - start)/1000.0/60.0;
+        return (stop - start)/1000.0;
+    }
 
+    public boolean isMatch(Pair<String, Integer> location, Set<String> attributes) {
+        List<Validator.Location<I>> locations = validator.getPartitionedLocations().get(location.getFirst());
+        int index = location.getSecond();
+        Set<String> repairedAttributes = locations.stream()
+                .filter(loc -> loc.index == index)
+                .map(loc -> loc.attribute)
+                .collect(Collectors.toSet());
+
+        return attributes.stream().anyMatch(repairedAttributes::contains);
+    }
+
+    /**
+     * Repair the datasets and return the repairs with their costs
+     */
+    public double repair(int numAnchors, Validator<I> validator, Set<String> considerAttributes) throws RepairException, ChronosException {
+        this.validator = validator;
+        repairedDatasets = new HashMap<>();
+        double duration;
+
+        if (considerAttributes.isEmpty()) {
+            duration = timeSeriesRepair.repair(numAnchors, repairedDatasets);
+        } else {
+            duration = timeSeriesRepair.repair(numAnchors, considerAttributes, this::isMatch, repairedDatasets);
+        }
+
+        return duration;
     }
 
     /**
@@ -434,6 +381,24 @@ public abstract class Experiments<I extends Comparable<? super I>> {
         double duration = repair(numAnchors, validator, considerAttributes);
 
         findRepairLocations();
+
+        return duration;
+    }
+
+    /**
+     * Run the full repair process. This includes partitioning the dataset into multiple time series and
+     * creating the repair engine (if this isn't done yet), executing the repair, and analyzing the repair.
+     */
+    public double run(int numAnchors, Validator<I> validator, Set<String> considerAttributes, Set<String> validateAttributes)
+            throws ChronosException, RepairException {
+
+        // partition the dataset
+        createTemporalDatasets();
+
+        // execute the repair
+        double duration = repair(numAnchors, validator, considerAttributes);
+
+        findRepairLocations(validateAttributes);
 
         return duration;
     }

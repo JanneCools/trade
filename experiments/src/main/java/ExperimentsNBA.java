@@ -132,9 +132,6 @@ public class  ExperimentsNBA extends Experiments<Integer> {
                 List.of(SigmaContractorFactory.BIGDECIMAL_TWO_DECIMALS, SigmaContractorFactory.BIGDECIMAL_TWO_DECIMALS), operatorTrb
         )));
 
-        this.costFunctions = new LinkedHashMap<>();
-        this.costFunctions.putAll(costFunctions);
-
         return new NonConstantCostModel(TRuleset.unfold(costFunctions), Map.ofEntries(
                 Map.entry("salary#curr", new PartitionedTemporalBounding<>(
                         this.fullDataset, "player", SigmaContractorFactory.INTEGER, "line_nr",
@@ -181,13 +178,18 @@ public class  ExperimentsNBA extends Experiments<Integer> {
 
         String path = "data/nba";
         String datasetFilename = "dataset.csv";
-        String rulesetFilename = "rules.rbx";
+        String rulesetFilename = "rules_stationary.rbx";
         String timeAttribute = "line_nr";
         String partitionAttribute = "player";
 
         boolean baseline = true;
         int numAnchors = 1;
         boolean earlyStop = true;
+
+        Set<String> validateAttributes = Set.of(
+                "year", "age", "yrs_experience", "games", "minutes_played", "vorp",
+                "salary", "drb", "orb", "trb"
+        );
 
         System.out.println("Running ExperimentsNBA with " + (baseline ? "baseline" : "customized") + " cost model and " + numAnchors + " anchors.");
 
@@ -197,14 +199,14 @@ public class  ExperimentsNBA extends Experiments<Integer> {
         double f1 = 0.0;
         double executionTime = 0.0;
         double executionTimePreprocessing = 0.0;
-        Validator<Integer> validator = new Validator<>(path + "/error_locations.txt");
+        Validator<Integer> validator = new Validator<>(path + "/error_locations.txt", validateAttributes);
         for (int i = 0; i < amount; i++) {
             ExperimentsNBA rd = new ExperimentsNBA(path, datasetFilename, rulesetFilename, timeAttribute, partitionAttribute, earlyStop);
 
             rd.readDatasetFromPath(";");
             rd.readRulesFromPath();
             double durationPreprocessing = rd.initialize(baseline, Set.of("year"), NullBehavior.NO_REPAIR);
-            double duration = rd.run(numAnchors, validator, Set.of("age", "yrs_experience"));
+            double duration = rd.run(numAnchors, validator, Set.of("age", "yrs_experience"), validateAttributes);
 
             int numCells = rd.fullDataset.getSize() * rd.fullDataset.getContract().getAttributes().size();
             validator.setPartitionedLocations(rd.convertRepairLocations(validator.getPartitionedLocations()));
@@ -220,11 +222,87 @@ public class  ExperimentsNBA extends Experiments<Integer> {
         System.out.println("Avg precision: " + precision / amount);
         System.out.println("Avg recall: " + recall / amount);
         System.out.println("Avg f1: " + f1 / amount);
-        System.out.println("Avg execution time preprocessing: " + executionTimePreprocessing / amount);
-        System.out.println("Avg execution time: " + executionTime / amount);
+        System.out.println("Avg execution time preprocessing: " + executionTimePreprocessing / amount + " seconds");
+        System.out.println("Avg execution time: " + executionTime / amount + " seconds");
 
         long endTotal = System.currentTimeMillis();
-        System.out.println("Total runtime: " + (endTotal - startTotal)/1000.0/60.0 + " minutes");
+        System.out.println("Total runtime: " + (endTotal - startTotal)/1000.0 + " seconds");
+        System.out.println("Running ExperimentsNBA with " + (baseline ? "baseline" : "customized") + " cost model and " + numAnchors + " anchors.");
     }
+
+//    public static void main(String[] args) throws ChronosException, IOException, ParseException, RepairException, DataReadException {
+//        long startTotal = System.currentTimeMillis();
+//
+//        String path = "data/nba";
+//        String datasetFilename = "dataset.csv";
+//        String rulesetFilename = "rules.rbx";
+//        String timeAttribute = "line_nr";
+//        String partitionAttribute = "player";
+//
+//        boolean baseline = false;
+//        int numAnchors = 5;
+//        boolean earlyStop = true;
+//
+//        Set<String> validateAttributes = Set.of(
+//                "year", "age", "yrs_experience", "games", "minutes_played", "vorp",
+//                "salary", "drb", "orb", "trb"
+//        );
+//
+//        ExperimentsNBA rw = new ExperimentsNBA(path, datasetFilename, rulesetFilename, timeAttribute, partitionAttribute, earlyStop);
+//
+//        System.out.println("Running ExperimentsNBA with " + (baseline ? "baseline" : "customized") + " cost model and " + numAnchors + " anchors.");
+//
+//        // read dataset and rules
+//        long start = System.currentTimeMillis();
+//        rw.readDatasetFromPath(";");
+//        rw.readRulesFromPath();
+//        long stop = System.currentTimeMillis();
+//        System.out.println("Time for reading dataset and rules: " + (stop - start)/1000.0 + " seconds");
+//
+//        int numCells = rw.fullDataset.getSize() * rw.fullDataset.getContract().getAttributes().size();
+//        System.out.println("Total cells: " + numCells);
+//
+//        double dur = rw.initialize(baseline, Set.of("year"), NullBehavior.NO_REPAIR);
+//        System.out.println("Time for initialization: " + dur + " seconds");
+//
+//        // execute repair
+//        int amount = 10;
+//        List<Double> precisions = new ArrayList<>();
+//        List<Double> recalls = new ArrayList<>();
+//        List<Double> f1s = new ArrayList<>();
+//        double executionTime = 0.0;
+//        Validator<Integer> validator = new Validator<>(path + "/error_locations.txt", validateAttributes);
+//        for (int i = 0; i < amount; i++) {
+//            System.out.println("Run " + i);
+//            ExperimentsNBA copy = new ExperimentsNBA(rw);
+//            double duration = copy.run(numAnchors, validator, Set.of("age", "yrs_experience"), validateAttributes);
+//
+//            validator.setPartitionedLocations(copy.convertRepairLocations(validator.getPartitionedLocations()));
+//            Map<String, List<Validator.Location<Integer>>> convertedLocations = copy.convertRepairLocations();
+//            List<Double> metrics = validator.validate(copy.validationPath, convertedLocations, numCells);
+//            precisions.add(metrics.get(0));
+//            recalls.add(metrics.get(1));
+//            f1s.add(metrics.get(2));
+//            executionTime += duration;
+//            System.out.println(duration + ": " + metrics);
+//        }
+//        double avgPrecision = precisions.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+//        double avgRecall = recalls.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+//        double avgF1 = f1s.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+//
+//        double stdPrecision = getStd(precisions, avgPrecision);
+//        double stdRecall = getStd(recalls, avgRecall);
+//        double stdF1 = getStd(f1s, avgF1);
+//
+//        System.out.println("Avg precision: " + avgPrecision + " (with std " + stdPrecision + ")");
+//        System.out.println("Avg recall: " + avgRecall + " (with std " + stdRecall + ")");
+//        System.out.println("Avg f1: " + avgF1 + " (with std " + stdF1 + ")");
+//        System.out.println("Execution time preprocessing: " + dur + " seconds");
+//        System.out.println("Avg execution time: " + executionTime / amount + " seconds");
+//
+//        long endTotal = System.currentTimeMillis();
+//        System.out.println("Total runtime: " + (endTotal - startTotal)/1000.0/60.0 + " minutes");
+//        System.out.println("Running ExperimentsNBA with " + (baseline ? "baseline" : "customized") + " cost model and " + numAnchors + " anchors.");
+//    }
 
 }

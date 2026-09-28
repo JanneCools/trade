@@ -100,9 +100,6 @@ public class ExperimentsSettlement extends Experiments<LocalDateTime> {
                 Map.of(distanceCost, 1, targetCost, 1)
         )));
 
-        this.costFunctions = new LinkedHashMap<>();
-        this.costFunctions.putAll(costFunctions);
-
         return new NonConstantCostModel(TRuleset.unfold(costFunctions), Map.of(
                 "area_total_km2#curr", new PartitionedBounding<>(
                         this.fullDataset, "page_id",
@@ -144,42 +141,57 @@ public class ExperimentsSettlement extends Experiments<LocalDateTime> {
         int numAnchors = 1;
         boolean earlyStop = true;
 
+        Set<String> validateAttributes = Set.of(
+                "population_total", "area_total_km2", "population_density_km2"
+        );
+
         System.out.println("Running ExperimentsSettlement with " + (baseline ? "baseline" : "customized") + " cost model and " + numAnchors + " anchors.");
 
         int amount = 10;
-        double precision = 0.0;
-        double recall = 0.0;
-        double f1 = 0.0;
+        List<Double> precisions = new ArrayList<>();
+        List<Double> recalls = new ArrayList<>();
+        List<Double> f1s = new ArrayList<>();
         double executionTime = 0.0;
         double executionTimePreprocessing = 0.0;
-        Validator<LocalDateTime> validator = new Validator<>(path + "/error_locations.txt");
+        Validator<LocalDateTime> validator = new Validator<>(path + "/error_locations.txt", validateAttributes);
         for (int i = 0; i < amount; i++) {
+            System.out.println("Run " + i);
             ExperimentsSettlement rw = new ExperimentsSettlement(path, datasetFilename, rulesetFilename, timeAttribute, partitionAttribute, earlyStop);
 
             rw.readDatasetFromPath(";");
             rw.readRulesFromPath();
             double durationPreprocessing = rw.initialize(baseline, new HashSet<>(), NullBehavior.NO_REPAIR);
-            double duration = rw.run(numAnchors, validator, new HashSet<>());
+            double duration = rw.run(numAnchors, validator, new HashSet<>(), validateAttributes);
 
             int numCells = rw.fullDataset.getSize() * rw.fullDataset.getContract().getAttributes().size();
             validator.setPartitionedLocations(rw.convertRepairLocations(validator.getPartitionedLocations()));
             Map<String, List<Validator.Location<LocalDateTime>>> convertedLocations = rw.convertRepairLocations();
             List<Double> metrics = validator.validate(rw.validationPath, convertedLocations, numCells);
-            precision += metrics.get(0);
-            recall += metrics.get(1);
-            f1 += metrics.get(2);
+            precisions.add(metrics.get(0));
+            recalls.add(metrics.get(1));
+            f1s.add(metrics.get(2));
             executionTime += duration;
             executionTimePreprocessing += durationPreprocessing;
             System.out.println(durationPreprocessing + " + " + duration + ": " + metrics);
         }
-        System.out.println("Avg precision: " + precision / amount);
-        System.out.println("Avg recall: " + recall / amount);
-        System.out.println("Avg f1: " + f1 / amount);
-        System.out.println("Avg execution time preprocessing: " + executionTimePreprocessing / amount);
-        System.out.println("Avg execution time: " + executionTime / amount);
+
+        double avgPrecision = precisions.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+        double avgRecall = recalls.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+        double avgF1 = f1s.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+
+        double stdPrecision = getStd(precisions, avgPrecision);
+        double stdRecall = getStd(recalls, avgRecall);
+        double stdF1 = getStd(f1s, avgF1);
+
+        System.out.println("Avg precision: " + avgPrecision + " (with std " + stdPrecision + ")");
+        System.out.println("Avg recall: " + avgRecall + " (with std " + stdRecall + ")");
+        System.out.println("Avg f1: " + avgF1 + " (with std " + stdF1 + ")");
+        System.out.println("Avg execution time preprocessing: " + executionTimePreprocessing / amount + " seconds");
+        System.out.println("Avg execution time: " + executionTime / amount + " seconds");
 
         long endTotal = System.currentTimeMillis();
-        System.out.println("Total runtime: " + (endTotal - startTotal)/1000.0/60.0 + " minutes");
+        System.out.println("Total runtime: " + (endTotal - startTotal)/1000.0 + " seconds");
+        System.out.println("Running ExperimentsSettlement with " + (baseline ? "baseline" : "customized") + " cost model and " + numAnchors + " anchors.");
     }
 
     /**
@@ -233,6 +245,81 @@ public class ExperimentsSettlement extends Experiments<LocalDateTime> {
 //
 //        long endTotal = System.currentTimeMillis();
 //        System.out.println("Total runtime: " + (endTotal - startTotal)/1000.0/60.0 + " minutes");
+//    }
+
+//    public static void main(String[] args) throws ChronosException, IOException, ParseException, RepairException, DataReadException {
+//        long startTotal = System.currentTimeMillis();
+//
+//        String path = "data/settlement";
+//        String datasetFilename = "dataset.csv";
+//        String rulesetFilename = "rules_stationary.rbx";
+//        String timeAttribute = "value_valid_from";
+//        String partitionAttribute = "page_id";
+//
+//        boolean baseline = true;
+//        int numAnchors = 1;
+//        boolean earlyStop = true;
+//
+//        Set<String> validateAttributes = Set.of(
+//                "population_total", "area_total_km2", "population_density_km2"
+//        );
+//
+//        ExperimentsSettlement rw = new ExperimentsSettlement(path, datasetFilename, rulesetFilename, timeAttribute, partitionAttribute, earlyStop);
+//
+//        System.out.println("Running ExperimentsSettlement with " + (baseline ? "baseline" : "customized") + " cost model and " + numAnchors + " anchors.");
+//
+//        // read dataset and rules
+//        long start = System.currentTimeMillis();
+//        rw.readDatasetFromPath(";");
+//        rw.readRulesFromPath();
+//        long stop = System.currentTimeMillis();
+//        System.out.println("Time for reading dataset and rules: " + (stop - start)/1000.0 + " seconds");
+//
+//        int numCells = rw.fullDataset.getSize() * rw.fullDataset.getContract().getAttributes().size();
+//        System.out.println("Total cells: " + numCells);
+//
+//        double dur = rw.initialize(baseline, new HashSet<>(), NullBehavior.NO_REPAIR);
+//        System.out.println("Time for initialization: " + dur + " seconds");
+//
+//        // execute repair
+//        int amount = 10;
+//        List<Double> precisions = new ArrayList<>();
+//        List<Double> recalls = new ArrayList<>();
+//        List<Double> f1s = new ArrayList<>();
+//        double executionTime = 0.0;
+//        Validator<LocalDateTime> validator = new Validator<>(path + "/error_locations.txt", validateAttributes);
+//        for (int i = 0; i < amount; i++) {
+//            System.out.println("Run " + i);
+//            ExperimentsSettlement copy = new ExperimentsSettlement(rw);
+//            double duration = copy.run(numAnchors, validator, new HashSet<>(), validateAttributes);
+//
+//            validator.setPartitionedLocations(copy.convertRepairLocations(validator.getPartitionedLocations()));
+//            Map<String, List<Validator.Location<LocalDateTime>>> convertedLocations = copy.convertRepairLocations();
+//            List<Double> metrics = validator.validate(copy.validationPath, convertedLocations, numCells);
+//            precisions.add(metrics.get(0));
+//            recalls.add(metrics.get(1));
+//            f1s.add(metrics.get(2));
+//            executionTime += duration;
+//            System.out.println(duration + ": " + metrics);
+//        }
+//
+//        double avgPrecision = precisions.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+//        double avgRecall = recalls.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+//        double avgF1 = f1s.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+//
+//        double stdPrecision = getStd(precisions, avgPrecision);
+//        double stdRecall = getStd(recalls, avgRecall);
+//        double stdF1 = getStd(f1s, avgF1);
+//
+//        System.out.println("Avg precision: " + avgPrecision + " (with std " + stdPrecision + ")");
+//        System.out.println("Avg recall: " + avgRecall + " (with std " + stdRecall + ")");
+//        System.out.println("Avg f1: " + avgF1 + " (with std " + stdF1 + ")");
+//        System.out.println("Execution time preprocessing: " + dur + " seconds");
+//        System.out.println("Avg execution time: " + executionTime / amount + " seconds");
+//
+//        long endTotal = System.currentTimeMillis();
+//        System.out.println("Total runtime: " + (endTotal - startTotal)/1000.0/60.0 + " minutes");
+//        System.out.println("Running ExperimentsElection with " + (baseline ? "baseline" : "customized") + " cost model and " + numAnchors + " anchors.");
 //    }
 
 }

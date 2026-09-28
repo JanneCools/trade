@@ -59,6 +59,34 @@ public class Validator<T extends Comparable<? super T>> {
         });
     }
 
+    public Validator(String validationPath, Set<String> attributes) throws IOException {
+        List<String> lines = Files.readAllLines(new File(Paths.get(validationPath).toUri()).toPath().toAbsolutePath(), Charset.defaultCharset());
+        numRepairs = lines.size();
+        partitionedLocations = new HashMap<>();
+        for (String line: lines) {
+            String[] info = line.split(";");
+            String partitionValue = info[0].trim();
+            int lineIndex = Integer.parseInt(info[1].trim());
+            String attribute = info[2].trim();
+            String correctValue = info[3].trim();
+            String incorrectValue = info[4].trim();
+
+            // only keep required attribute repairs
+            if (attributes.contains(attribute)) {
+                if (!partitionedLocations.containsKey(partitionValue)) partitionedLocations.put(partitionValue, new ArrayList<>());
+                partitionedLocations.get(partitionValue).add(new Location<>(lineIndex, attribute, incorrectValue, correctValue));
+            }
+
+        }
+
+        // sort by line index
+        partitionedLocations.replaceAll((key, list) -> {
+            list.sort(Comparator.comparingInt(loc -> loc.index));
+            return list;
+        });
+
+    }
+
     public Map<String, List<Location<T>>> getPartitionedLocations() {
         return partitionedLocations;
     }
@@ -219,5 +247,80 @@ public class Validator<T extends Comparable<? super T>> {
         writer.write(data, file);
 
         return List.of(precision, recall, f1);
+    }
+
+    public static class Metrics {
+        public int truePositives = 0;
+        public int numRepairs = 0;
+        public int numShouldBeRepaired = 0;
+        public double precision = 0;
+        public double recall = 0;
+        public double f1 = 0;
+
+        public List<Double> precisions = new ArrayList<>();
+        public List<Double> recalls = new ArrayList<>();
+        public List<Double> f1s = new ArrayList<>();
+    }
+
+    /**
+     * This function computes precision/recall/f1 in a different way.
+     * For each attribute, a time series is considered anomalous if at least one of its values
+     * is indicated as anomalous.
+     * Precision is the fraction of correctly identified anomalous time series
+     * Recall is the fraction of anomalous time series that are correctly identified
+     */
+    public Map<String, Metrics> validateTimeSeriesPerAttributes(
+            Set<String> keys, Set<String> attributes, Map<String, List<Location<T>>> repairLocations
+    ) {
+        // for each attribute store number of true positives, true negatives, repairs and ground truth repairs
+        Map<String, Metrics> info = new HashMap<>();
+        attributes.forEach(a -> info.put(a, new Metrics()));
+
+        for (String key: keys) {
+            boolean present = repairLocations.containsKey(key);
+            boolean truePresent = this.partitionedLocations.containsKey(key);
+
+            if (present && truePresent) {
+                List<Location<T>> trueLocations = this.partitionedLocations.get(key);
+                List<Location<T>> locations = repairLocations.get(key);
+
+                for (String attribute: attributes) {
+                    boolean isRepaired = locations.stream().anyMatch(l -> l.attribute.equals(attribute));
+                    boolean isTrueRepaired = trueLocations.stream().anyMatch(l -> l.attribute.equals(attribute));
+                    if (isRepaired && isTrueRepaired) {
+                        info.get(attribute).numRepairs ++;
+                        info.get(attribute).numShouldBeRepaired++;
+                        info.get(attribute).truePositives++;
+                    } else if (isRepaired) {
+                        info.get(attribute).numRepairs ++;
+                    } else if (isTrueRepaired) {
+                        info.get(attribute).numShouldBeRepaired++;
+                    }
+                }
+            }
+            else if (present) {
+                List<Location<T>> locations = repairLocations.get(key);
+                for (String attribute: attributes) {
+                    if (locations.stream().anyMatch(l -> l.attribute.equals(attribute)))
+                        info.get(attribute).numRepairs++;
+                }
+            }
+            else if (truePresent) {
+                List<Location<T>> trueLocations = this.partitionedLocations.get(key);
+                for (String attribute: attributes) {
+                    if (trueLocations.stream().anyMatch(l -> l.attribute.equals(attribute)))
+                        info.get(attribute).numShouldBeRepaired++;
+                }
+            }
+        }
+
+        for (Map.Entry<String, Metrics> entry: info.entrySet()) {
+            Metrics metrics = entry.getValue();
+            metrics.precision = (double) metrics.truePositives / (double) metrics.numRepairs;
+            metrics.recall = (double) metrics.truePositives / (double) metrics.numShouldBeRepaired;
+            metrics.f1 = (2 * metrics.precision * metrics.recall) / (metrics.precision + metrics.recall);
+        }
+
+        return info;
     }
 }
