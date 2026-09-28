@@ -38,3 +38,5 @@ NOT population_total#next < S^-200000(population_total#curr)
 NOT population_total#next > population_total#curr & population_density_km2#next < population_density_km2#curr
 NOT population_total#next < population_total#curr & population_density_km2#next > population_density_km2#curr
 
+NOT page_title#next != page_title#curr
+
