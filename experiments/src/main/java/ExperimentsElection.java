@@ -1,18 +1,18 @@
-import be.ugent.ledc.chronos.ChronosException;
-import be.ugent.ledc.chronos.datastructures.Signal;
-import be.ugent.ledc.chronos.datastructures.TemporalDataset;
-import be.ugent.ledc.chronos.rules.TRuleset;
-import be.ugent.ledc.core.ParseException;
-import be.ugent.ledc.core.RepairException;
-import be.ugent.ledc.core.binding.DataReadException;
-import be.ugent.ledc.core.cost.AggregateCostFunction;
-import be.ugent.ledc.core.datastructures.Pair;
-import be.ugent.ledc.sigma.datastructures.contracts.DateTimeContractor;
-import be.ugent.ledc.sigma.datastructures.contracts.SigmaContractorFactory;
-import be.ugent.ledc.sigma.repair.NullBehavior;
-import be.ugent.ledc.sigma.repair.bounding.PartitionedBounding;
-import be.ugent.ledc.sigma.repair.cost.functions.*;
-import be.ugent.ledc.sigma.repair.cost.models.NonConstantCostModel;
+import chronos.ChronosException;
+import chronos.datastructures.Signal;
+import chronos.datastructures.TemporalDataset;
+import chronos.rules.TRuleset;
+import core.ParseException;
+import core.RepairException;
+import core.binding.DataReadException;
+import core.cost.AggregateCostFunction;
+import core.datastructures.Pair;
+import sigma.datastructures.contracts.DateTimeContractor;
+import sigma.datastructures.contracts.SigmaContractorFactory;
+import sigma.repair.NullBehavior;
+import sigma.repair.bounding.PartitionedBounding;
+import sigma.repair.cost.functions.*;
+import sigma.repair.cost.models.NonConstantCostModel;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -192,13 +192,13 @@ public class ExperimentsElection extends Experiments<LocalDateTime> {
 
         String path = "data/election";
         String datasetFilename = "dataset.csv";
-        String rulesetFilename = "rules.rbx";
+        String rulesetFilename = "rules_stationary.rbx";
         String timeAttribute = "value_valid_from";
         String partitionAttribute = "page_id";
 
         boolean earlyStop = true;
-        boolean baseline = false;
-        int numAnchors = 5;
+        boolean baseline = true;
+        int numAnchors = 1;
 
         boolean reportOnSeriesLevel = false;
 
@@ -210,7 +210,7 @@ public class ExperimentsElection extends Experiments<LocalDateTime> {
 
         System.out.println("Running ExperimentsElection with " + (baseline ? "baseline" : "customized") + " cost model and " + numAnchors + " anchors.");
 
-        int amount = 1;
+        int amount = 10;
         double precision = 0.0;
         double recall = 0.0;
         double f1 = 0.0;
