@@ -3,13 +3,6 @@
 This repository contains the reproducibility artifacts for the TRADE framework,
 a logic-based approach for detecting anomalies in sparse and irregular time series using transition rules.
 
-## Papers
-For each paper, a corresponding release provides the code used for those experiments for reproducibility.
-
-| Release | Paper | Venue|
-|---------|-------|------|
-| v1.0    | TRADE: Time Series Anomaly Detection Using Transition Rules| EDBT/ICDT 2027|
-
 
 ## Repository Structure
 ### Implementation code
